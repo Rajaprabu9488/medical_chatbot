@@ -1,3 +1,7 @@
 .ipynb_checkpoints/
 .vs/
 env/
+.env
+
+
+books/
