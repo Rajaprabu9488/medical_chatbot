@@ -5,3 +5,8 @@ env/
 
 
 books/
+.vscode/
+
+vector_DB/
+saved_files/
+temp/

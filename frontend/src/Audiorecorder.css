@@ -1,0 +1,82 @@
+.audio-container {
+  position: relative;        
+  width: 700px;             
+  height: 120px;             
+  margin: 0 auto;
+}
+
+.audio_container_idle{
+  position: relative;
+  display: block;
+  width: 50px;
+  height: 50px;
+}
+
+canvas {
+  width: 700px;
+  height: 120px;
+  border-radius: 50px;
+  background: #020617;     
+}
+
+/* Start Button (over canvas center) */
+.start_button {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 90px;
+  width: 90px;
+  /* border: 5px solid skyblue; */
+  border-radius: 50%;
+  cursor: pointer;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;  
+}
+
+.start_button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stop / Mic / Pause / Resume buttons container */
+.stop_btn_mechanism {
+  position: absolute;
+  top: 20%;        
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 40px;          
+  z-index: 10;
+}
+
+.stop_btn_mechanism .stop_button {
+  height: 50px;
+  width: 100px;
+  border: 3px solid skyblue;
+  border-radius: 50px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stop_btn_mechanism .start_button{
+    background-color: red;
+    border: 3px solid black;
+}
+
+/* Canvas visibility during recoding*/
+.active-canvas {
+  pointer-events: auto;   
+  opacity: 1;              
+}
+
+.disabled-canvas {
+  pointer-events: none;    
+  opacity: 0;           
+}

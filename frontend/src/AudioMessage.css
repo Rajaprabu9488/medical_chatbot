@@ -1,0 +1,32 @@
+.audio-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background:transparent;
+  padding: 6px 10px;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.play-btn {
+  background: #00a884;
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  cursor: pointer;
+}
+
+.progress-bar {
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.time {
+  color: white;
+  font-size: 12px;
+}
