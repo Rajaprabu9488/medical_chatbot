@@ -3,40 +3,59 @@ from langchain_community.llms import Ollama
 import joblib
 
 
-faiss_db=None
+faiss_db_1 = None
+faiss_db_2 = None
 llm=None 
 
 def rag_initial_loader():
-    global faiss_db,llm
+    global faiss_db_1,faiss_db_2,llm
+
     # load embeddings 
-    embeddings=joblib.load("C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/saved_files/embedding_BAAI.joblib")
+    embeddings_sentence_transformer = joblib.load("C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/saved_files/embedding_sentence_transformers.joblib")
+    embeddings_BAAI = joblib.load("C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/saved_files/embedding_BAAI.joblib")
 
     # load faiss database
-    faiss_db = FAISS.load_local(
-    "C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/vector_DB/medical_pdf_storage_BAAI",
-    embeddings,
+    faiss_db_1 = FAISS.load_local(
+    "C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/vector_DB/medical_pdf_storage_sentence_transformer",
+    embeddings_sentence_transformer,
     allow_dangerous_deserialization=True
     )
 
+    faiss_db_2 = FAISS.load_local(
+    "C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/vector_DB/medical_pdf_storage_BAAI",
+    embeddings_BAAI,
+    allow_dangerous_deserialization=True
+    )
     # set llama3.2 as LLM model and set temperture as 0 in ollama
     # ollama is platform to run the large language model in local machine
     # llama 3.2 is the lightweight and less capable model. it works on cpu (no GPU required) and it is a 2 billion to 3 billion parameter
     
     llm = Ollama(
         model="llama3.2",
-        temperature=0
+        temperature=0,
+        keep_alive=-1
     )
 
 
 def rag_pipeline(question):
     
-    
     # perform similarity search with k = 3 sentences
     # the search is based ok cosine similarity
-    results = faiss_db.similarity_search(question, k=3)
+    results_1 = faiss_db_1.similarity_search_with_score(question, k=3)
+    results_2 = faiss_db_2.similarity_search_with_score(question, k=3)
 
+    
+    # score of documents
+
+        
+    result_1_score=max(map(lambda x: x[1],results_1))
+    result_2_score=max(map(lambda x: x[1],results_2))
+
+
+    results = results_1 if result_1_score>=result_2_score else results_2
+    
     # convert the vectors to string format
-    context ="\n\n".join([i.page_content for i in results]) 
+    context ="\n\n".join([i[0].page_content for i in results]) 
 
     # rag prompt that pass the string as parameter to llama model
     rag_prompt = f"""

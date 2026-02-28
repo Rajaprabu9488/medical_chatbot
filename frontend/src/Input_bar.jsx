@@ -5,52 +5,105 @@ import image_upload_icon from './assets/image_upload_icon.png';
 import { responseStatus } from "./App";
 import Audiorecorder from './Audiorecorder';
 import './Input_bar.css'
-import AudioMessage from './AudioMessage';
-
+import ImageUploader from './Imageuploader';
+import Audiouploader from './Audiouploader';
+import { Textmessageform, Audiomessageform, Imagemessageform } from './Messageformats';
 
 
 
 function Input_bar(){
     const [words,Setwords]=useState('');
-    const {hasstarted,Sethasstarted,Setquery,recording, setRecording,audioBlob,setAudioBlob}=useContext(responseStatus);
-    const iconRef = useRef(null);
+    const [audiosize,setaudiosize] = useState(null);
+    const [imagesize,setimagesize] = useState(null); 
 
+    const {hasstarted, Sethasstarted, Setquery,recording, setRecording,audioBlob,setAudioBlob,audioview, setAudioview,
+              imageview, setImageview,imageFile,setimageFile} = useContext(responseStatus);
+    const fileInputRef = useRef(null);
+
+
+
+
+    // when user selects image file
+  const handleImageChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setimagesize((file.size / (1024 * 1024)).toFixed(2));
+      setimageFile(file);
+      const imageUrl = URL.createObjectURL(file);
+      setImageview(imageUrl);
+    }
+    event.target.value = "";
+  };
+
+  const removeImage = () => {
+    setImageview(null);
+    setimageFile(null);
+    setimagesize(null);
+    fileInputRef.current.value = null;
+  };
+
+  // when user selects audio file
+  const start_audiorecord = ()=>{
+    setRecording(true);
+    Setwords('');
+  }
+
+  const removeAudio= ()=>{
+    setAudioBlob(null);
+    setAudioview(null);
+    setaudiosize(null);
+  }
+
+  // when user type text or click send button
   const word_change=()=>{
-    if(!words.trim() && !audioBlob) return ;
-    const id = Date.now();
-    if(words.trim()){
-    Setquery(prev=>[...prev,{id:id,from:'user',content:'text',text:words},{id:id+1,from:'bot',content:'text',text:'Typing...'}]);
-    }
-    if(audioBlob){
-    const audiourl=(URL.createObjectURL(audioBlob));
-    
-    Setquery(prev => [
-      ...prev,
-      {
-        id: id,
-        from: 'user',
-        content: 'audio',
-        text: audiourl
-      },
-      {
-        id: id + 1,
-        from: 'bot',
-        content: 'text',
-        text: 'Typing...'
+    Setwords(words.trim());
+    if(!words && !audioBlob && !imageFile) return ;
+
+    if(words.length > 150) return;
+    console.log(words.length+" "+audiosize+" "+imagesize);
+
+    if(imageFile){
+      let image_layout;
+      if(words){
+        image_layout = Imagemessageform(imageview,words);
       }
-    ]);
-    
+      else if(audioBlob){
+        image_layout = Imagemessageform(imageview,audioview);
+      }
+      else{
+        image_layout = Imagemessageform(imageview, null);
+      }
+
+      Setquery(prev => [...prev,...image_layout]);
     }
+
+    else if(words){
+      const text_layout = Textmessageform(words)
+      Setquery(prev=>[...prev,...text_layout]);
+    }
+
+    else if(audioBlob){
+      const audio_layout = Audiomessageform(audioview);
+      Setquery(prev => [...prev,...audio_layout]);
+    }
+
+    
+
     Api_calls();
     Sethasstarted(true);
+    setaudiosize(null);
+    setimagesize(null);
   }
 
   function Api_calls(){
     const formData = new FormData();
-
     if(words) formData.append("text", words);
-    if(audioBlob) formData.append("audio", audioBlob,'recording.webm');
-    // if(imageFile) formData.append("image", imageFile);
+    if(audioBlob) formData.append("audio", audioBlob,`${crypto.randomUUID()}.webm`);
+    if(imageFile){
+      const extension = imageFile.type.split("/")[1];
+      const newFileName = `${crypto.randomUUID()}.${extension}`;
+      formData.append("image", imageFile,newFileName);
+    } 
     let responses=fetch("http://127.0.0.1:3000/input/", {
     method: "POST",
     body: formData
@@ -63,26 +116,40 @@ function Input_bar(){
 });
   Setwords('');
   setAudioBlob(null);
+  setimageFile(null);
+  setImageview(null);
+  setAudioview(null);
 }
  const textareaRef = useRef(null);
 
   // Auto resize logic
   useEffect(() => {
     const textarea = textareaRef.current;
-    const iconbox = iconRef.current;
+    if (!textarea) return; 
     textarea.style.height = "auto";
     textarea.style.height = textarea.scrollHeight + "px";
-    iconbox.style.top = (textarea.scrollHeight<140)?textarea.scrollHeight - iconbox.offsetHeight - 10 + "px":iconbox.style.top;
   }, [words]);
     return (
         <>
         <div className={(hasstarted)?'input_section_hasstarted':'input_section'}>
         
-      
+
+        {imageview && <ImageUploader hasstarted={hasstarted} imageview={imageview} removeImage={removeImage}/>}
+
         {!recording ? (<>
          <div className='input_container'>
           <div className='Btn-section-right'>
-          <button className='input_button' ><img src={image_upload_icon} height='30px' alt='Attach image'></img></button>
+            <input
+          type="file"
+          ref={fileInputRef}
+          multiple={false}
+          style={{ display: "none" }}
+          accept="image/*"
+          onChange={handleImageChange}
+        />
+          <button className='input_button'
+          type="button"
+          onClick={() => fileInputRef.current.click()}><img src={image_upload_icon} height='30px' alt='Attach image'></img></button>
         </div>
         
          {!audioBlob ?(<textarea
@@ -92,16 +159,18 @@ function Input_bar(){
         placeholder="Type a message"
         onChange={(e) => Setwords(e.target.value)}
         className="chat-textarea"
-      />):(<AudioMessage src={URL.createObjectURL(audioBlob)}/>) }
-         <div ref={iconRef} className='Btn-section-left'>
-          <button className='input_button' onClick={()=>{setRecording(true)}}><img src={mic_idle} height='30px' alt='mic'></img></button>
+      />):(<Audiouploader src={audioview} removeAudio={removeAudio}/>) }
+         <div className='Btn-section-left'>
+          <button className='input_button' onClick={start_audiorecord}><img src={mic_idle} height='30px' alt='mic'></img></button>
       <button className='input_button' onClick={word_change}><img src={send_img} height='30px' alt='send'></img></button>
       </div>
       </div>
         
       </>
        ):(
-        <Audiorecorder recording={recording} setRecording={setRecording} Setquery={Setquery} Sethasstarted={Sethasstarted} setAudioBlob={setAudioBlob}/>
+        <Audiorecorder recording={recording} setRecording={setRecording} 
+                      Setquery={Setquery} Sethasstarted={Sethasstarted} 
+                      setAudioBlob={setAudioBlob} setAudioview={setAudioview} setaudiosize={setaudiosize}/>
       )}
          
       </div>

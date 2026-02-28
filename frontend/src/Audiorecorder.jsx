@@ -9,7 +9,7 @@ import Statuspopup from "./Statuspopup";
 
 
 
-const Audiorecorder= ({recording, setRecording,setAudioBlob}) => {
+const Audiorecorder= ({recording, setRecording,setAudioBlob,setAudioview, setaudiosize}) => {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
 
@@ -46,6 +46,8 @@ const Audiorecorder= ({recording, setRecording,setAudioBlob}) => {
     });
 
     setAudioBlob(blob); 
+    setAudioview(URL.createObjectURL(blob));
+    setaudiosize((blob.size / (1024 * 1024)).toFixed(2));
     
     // sendAudioToDeepgram(blob);
 };

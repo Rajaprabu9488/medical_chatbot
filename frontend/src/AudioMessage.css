@@ -1,4 +1,4 @@
-.audio-container {
+.audio-container_1 {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -29,4 +29,22 @@
 .time {
   color: white;
   font-size: 12px;
+}
+
+/* audio uploader */
+
+.audio_upload_preview{
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  width: 100%;
+}
+
+.audio_preview_delete{
+  cursor: pointer;
+  border: None;
+  border-radius: 50%;
+  background-color: #dedede;
+  width: 30px;
+  height: 30px;
 }

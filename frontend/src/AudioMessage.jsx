@@ -63,7 +63,7 @@ function AudioMessage({ src }) {
   };
 
   return (
-    <div className="audio-container">
+    <div className="audio-container_1">
 
       <button onClick={togglePlay} className="play-btn">
         {playing ? "⏸" : "▶"}
