@@ -36,7 +36,7 @@ export const Audiomessageform = (audiourl) =>{
     ]
 }
 
-export const Imagemessageform = (imageurl,content) =>{
+export const Imagemessageform = (imageurl, content, isaudio) =>{
     const id = Date.now();
 
     return [
@@ -45,7 +45,8 @@ export const Imagemessageform = (imageurl,content) =>{
         from: 'user',
         content: 'image',
         image: imageurl,
-        text: content
+        text: content,
+        audio: isaudio
       },
       {
         id: id + 1,

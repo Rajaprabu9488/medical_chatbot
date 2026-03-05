@@ -1,85 +1,93 @@
-from langchain_community.vectorstores import FAISS
-from langchain_community.llms import Ollama
-import joblib
+import json
+import uuid
+import asyncio
+from datetime import timedelta
+from datetime import datetime
 
+queue:list = []
+cache:list = []
+sessions:dict = {}
 
-faiss_db_1 = None
-faiss_db_2 = None
-llm=None 
+async def initial_loader():
 
-def rag_initial_loader():
-    global faiss_db_1,faiss_db_2,llm
+    global queue, cache
 
-    # load embeddings 
-    embeddings_sentence_transformer = joblib.load("C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/saved_files/embedding_sentence_transformers.joblib")
-    embeddings_BAAI = joblib.load("C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/saved_files/embedding_BAAI.joblib")
+    try:
+        with open('./src/cache_.json','r') as file:
+            cache = json.load(file)
+        queue = cache[-5:]
 
-    # load faiss database
-    faiss_db_1 = FAISS.load_local(
-    "C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/vector_DB/medical_pdf_storage_sentence_transformer",
-    embeddings_sentence_transformer,
-    allow_dangerous_deserialization=True
-    )
-
-    faiss_db_2 = FAISS.load_local(
-    "C:/Users/My-PC/OneDrive/Desktop/medical-chatbot/vector_DB/medical_pdf_storage_BAAI",
-    embeddings_BAAI,
-    allow_dangerous_deserialization=True
-    )
-    # set llama3.2 as LLM model and set temperture as 0 in ollama
-    # ollama is platform to run the large language model in local machine
-    # llama 3.2 is the lightweight and less capable model. it works on cpu (no GPU required) and it is a 2 billion to 3 billion parameter
+    except:
+        print("error in file load")
     
-    llm = Ollama(
-        model="llama3.2",
-        temperature=0,
-        keep_alive=-1
-    )
+    await start_cleanup()
 
 
-def rag_pipeline(question):
-    
-    # perform similarity search with k = 3 sentences
-    # the search is based ok cosine similarity
-    results_1 = faiss_db_1.similarity_search_with_score(question, k=3)
-    results_2 = faiss_db_2.similarity_search_with_score(question, k=3)
+def user_id_provider():
+    return uuid.uuid4()
 
-    
-    # score of documents
+async def cleanup_sessions():
+    while True:
+        now = datetime.now()
 
-        
-    result_1_score=max(map(lambda x: x[1],results_1))
-    result_2_score=max(map(lambda x: x[1],results_2))
+        for session_id in list(sessions.keys()):
+            if now - sessions[session_id] > timedelta(minutes=10):
+                clear_cache()
+                del sessions[session_id]
 
-
-    results = results_1 if result_1_score>=result_2_score else results_2
-    
-    # convert the vectors to string format
-    context ="\n\n".join([i[0].page_content for i in results]) 
-
-    # rag prompt that pass the string as parameter to llama model
-    rag_prompt = f"""
-    You are a medical assistance chatbot and advisor designed to provide general health information in a clear, calm, and responsible manner.
+        await asyncio.sleep(300)
 
 
-    Your tone should be professional, reassuring, and easy to understand for non-medical users.
+async def start_cleanup():
+    asyncio.create_task(cleanup_sessions())
 
+def update_session(session_id):
+    sessions[session_id] = datetime.now()
+    print(sessions)
 
-    Answer ONLY using the context below.
-    Do NOT use outside or external knowledge.
-    If answer is missing, tell that content is not related to medical field.
+def past_string_structure(content):
 
-
-    context:
-    {context}
-
-    Question:
-    {question}
-
-    Answer:
+    past_string_stuct=f"""
+    question:
+    {content['question']}
+    answer:
+    {content['answer']}
     """
-    
-    # LLM query response generating
 
-    response = llm.invoke(rag_prompt)
-    return response
+    return str(past_string_stuct)
+
+
+
+def content_retriver():
+    final_string=""
+
+    for quest in queue:
+        temp = past_string_structure(quest)
+        final_string += temp
+
+    return final_string
+
+
+def json_uploader(question, answer):
+    global queue, cache
+    
+    new_data={'question' : question, 'answer': answer}
+
+    cache.append(new_data)
+
+    queue = cache[-5:]
+
+    with open('./src/cache_.json','w') as file:
+        json.dump(cache, file, indent=4)
+
+ 
+def clear_cache():
+    with open('./src/cache_.json','w') as file:
+        json.dump([], file, indent=4)
+
+
+if __name__=='__main__':
+
+    initial_loader()
+
+    print(content_retriver())

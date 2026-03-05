@@ -8,6 +8,7 @@ import './Input_bar.css'
 import ImageUploader from './Imageuploader';
 import Audiouploader from './Audiouploader';
 import { Textmessageform, Audiomessageform, Imagemessageform } from './Messageformats';
+import Statuspopup from './Statuspopup';
 
 
 
@@ -15,13 +16,66 @@ function Input_bar(){
     const [words,Setwords]=useState('');
     const [audiosize,setaudiosize] = useState(null);
     const [imagesize,setimagesize] = useState(null); 
+    const [errormsg,seterrormsg] = useState(''); 
 
     const {hasstarted, Sethasstarted, Setquery,recording, setRecording,audioBlob,setAudioBlob,audioview, setAudioview,
               imageview, setImageview,imageFile,setimageFile} = useContext(responseStatus);
     const fileInputRef = useRef(null);
 
 
+  // Detect reload
+useEffect(() => {
+  const navEntries = performance.getEntriesByType("navigation");
+  const navType = navEntries.length > 0 ? navEntries[0].type : null;
 
+  if (navType === "reload") {
+    sessionStorage.setItem("sessionStarted", "false");
+    console.log("hi reload..");
+  }
+}, []);
+
+
+// SESSION START
+useEffect(() => {
+  const sessionExists = sessionStorage.getItem("sessionStarted");
+
+  if (sessionExists !== "true") {
+    fetch("http://127.0.0.1:3000/api/session-start")
+      .then(res => res.json())
+      .then(data => {
+        console.log("session created:", data.connection);
+        sessionStorage.setItem("session_id", data.connection);
+        sessionStorage.setItem("sessionStarted", "true");
+      });
+
+    console.log("start page");
+  }
+}, []);
+
+    // heartbeat method to stay alive
+    useEffect(() => {
+  const sessionId = sessionStorage.getItem("session_id");
+
+  const sendHeartbeat = () => {
+    fetch("http://127.0.0.1:3000/api/session-active", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ session_id: sessionId }),
+    })
+    .then(res => res.json())
+    .then(data => console.log("heartbeat sent", data))
+    .catch(err => console.error(err));
+  };
+
+  const interval = setInterval(sendHeartbeat, 600000);
+
+  return () => clearInterval(interval);
+}, []);
+
+    
+   
 
     // when user selects image file
   const handleImageChange = (event) => {
@@ -59,19 +113,28 @@ function Input_bar(){
     Setwords(words.trim());
     if(!words && !audioBlob && !imageFile) return ;
 
-    if(words.length > 150) return;
-    console.log(words.length+" "+audiosize+" "+imagesize);
-
+    if(words.length >=300){
+      seterrormsg('TOO MUCH OF WORDS IN PROMPT');
+      return;
+    }
+    if(audiosize > 5) {
+      seterrormsg('AUDIO SIZE IS TOO HIGH');
+      return;
+    }
+    if(imagesize > 10) {
+      seterrormsg('IMAGE FILE SIZE IS TOO HIGH');
+      return;
+    }
     if(imageFile){
       let image_layout;
       if(words){
-        image_layout = Imagemessageform(imageview,words);
+        image_layout = Imagemessageform(imageview,words,false);
       }
       else if(audioBlob){
-        image_layout = Imagemessageform(imageview,audioview);
+        image_layout = Imagemessageform(imageview,audioview,true);
       }
       else{
-        image_layout = Imagemessageform(imageview, null);
+        image_layout = Imagemessageform(imageview, null,false);
       }
 
       Setquery(prev => [...prev,...image_layout]);
@@ -94,6 +157,8 @@ function Input_bar(){
     setaudiosize(null);
     setimagesize(null);
   }
+
+  // send to backend server
 
   function Api_calls(){
     const formData = new FormData();
@@ -129,8 +194,10 @@ function Input_bar(){
     textarea.style.height = "auto";
     textarea.style.height = textarea.scrollHeight + "px";
   }, [words]);
+
     return (
         <>
+        <Statuspopup errormsg={errormsg} seterrormsg={seterrormsg}/>
         <div className={(hasstarted)?'input_section_hasstarted':'input_section'}>
         
 
@@ -154,7 +221,7 @@ function Input_bar(){
         
          {!audioBlob ?(<textarea
         ref={textareaRef}
-        maxLength={500}
+        maxLength={300}
         value={words}
         placeholder="Type a message"
         onChange={(e) => Setwords(e.target.value)}

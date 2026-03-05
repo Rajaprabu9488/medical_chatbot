@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSystemStatus } from "./useSystemStatus";
 import "./Statuspopup.css";
 
-const Statuspopup = ({ triggerMicCheck }) => {
+const Statuspopup = ({ triggerMicCheck , errormsg, seterrormsg}) => {
   const { network, mic, checkMic } = useSystemStatus();
   const [popup, setPopup] = useState(null);
 
@@ -33,6 +33,13 @@ const Statuspopup = ({ triggerMicCheck }) => {
       setPopup({ msg: "❌ Microphone not detected", type: "offline", sticky: false });
     }
   }, [mic]);
+
+  useEffect(() =>{
+    if(errormsg==='') return;
+
+    setPopup({ msg: errormsg, type: "offline", sticky: false });
+    seterrormsg('');
+  },[errormsg])
 
   // ⏱ Auto-hide logic
   useEffect(() => {

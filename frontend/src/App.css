@@ -59,6 +59,7 @@ h1{
     background-color: #4CAF50;
     border: 1px solid #e0e0e0;
     border-bottom-left-radius: 4px;
+    text-align: left;
 }
 
 
@@ -67,6 +68,7 @@ h1{
     background-color: black ;
     color: white;
     border-bottom-right-radius: 4px;
+    text-align: left;
 }
 
 

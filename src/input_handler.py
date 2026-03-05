@@ -1,13 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Request 
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from helper import rag_pipeline,rag_initial_loader
+from embedding_and_llm import rag_pipeline,rag_initial_loader
 from audio_to_text import audio_initial_loader,audio_transcription
+from helper import initial_loader, user_id_provider,update_session
 import warnings
 from typing import Optional
 import shutil
 import os
-from PIL import Image
+
 
 
 warnings.filterwarnings('ignore')
@@ -20,6 +21,7 @@ app.add_middleware(CORSMiddleware,allow_origins=["*"],
                    allow_credentials=True)
 
 
+
 @app.on_event("startup")
 async def startup_event():
     rag_initial_loader()
@@ -28,12 +30,23 @@ async def startup_event():
     os.makedirs("./temp/image", exist_ok=True)
 
 
-# @app.post('/chats')
-# def home_chats(data:UserData):
-#     print(data.query)
-#     llm_response=rag_pipeline(data.query)
-#     print(llm_response)
-#     return {'response': llm_response}
+@app.get("/api/session-start")
+async def session_start():
+    await initial_loader()
+    print('new connection')
+    session_id=user_id_provider()
+    update_session(session_id)
+    return {"connection": session_id }
+
+
+@app.post("/api/session-active")
+async def close_session(request:Request):
+    data = await request.json()
+    session_id = data["session_id"]
+    print(session_id)
+    update_session(session_id)
+    return {'connection':'keep-alive'}
+
 
 
 @app.post("/input/")

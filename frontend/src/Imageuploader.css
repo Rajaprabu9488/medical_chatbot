@@ -57,3 +57,10 @@
 
 }
 
+/* image in chats */
+
+.image_in_chats{
+  height: 100px;
+  width:100px;
+  margin-left: auto;
+}

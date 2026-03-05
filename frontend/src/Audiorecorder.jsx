@@ -25,15 +25,15 @@ const Audiorecorder= ({recording, setRecording,setAudioBlob,setAudioview, setaud
   const [paused, setPaused] = useState(false);
   const [micTrigger, setMicTrigger] = useState(false);
 
-  let audiofile;
+
 
   // 🎤 Start Recording
   const startRecording = async () => {
     setMicTrigger(true);
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const Stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     // Media recorder (actual audio)
-    mediaRecorderRef.current = new MediaRecorder(stream);
+    mediaRecorderRef.current = new MediaRecorder(Stream);
     audioChunksRef.current = [];
 
     mediaRecorderRef.current.ondataavailable = (event) => {
@@ -57,7 +57,7 @@ const Audiorecorder= ({recording, setRecording,setAudioBlob,setAudioview, setaud
 
     // web audio API (waveform)
     audioContextRef.current = new AudioContext();
-    const source = audioContextRef.current.createMediaStreamSource(stream);
+    const source = audioContextRef.current.createMediaStreamSource(Stream);
 
     analyserRef.current = audioContextRef.current.createAnalyser();
     analyserRef.current.fftSize = 2048;
@@ -76,6 +76,7 @@ const Audiorecorder= ({recording, setRecording,setAudioBlob,setAudioview, setaud
     audioContextRef.current.close();
     setRecording(false);
     setPaused(false);
+
     // setTyping(true); // set for disable mic recoding while typing in text area
     
   };
