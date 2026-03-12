@@ -169,7 +169,7 @@ useEffect(() => {
 
   return (
     <>
-     <Statuspopup triggerMicCheck={micTrigger} /> {/* show network and mic permission status */}
+     <Statuspopup triggerMicCheck={micTrigger} errormsg={''}/> {/* show network and mic permission status */}
      <div className={(recording)?'audio-container':'audio_container_idle'}>
   <canvas ref={canvasRef} className={recording ? "active-canvas" : "disabled-canvas"}></canvas>
 

@@ -56,7 +56,12 @@ def past_string_structure(content):
 
     return str(past_string_stuct)
 
+def past_question(content):
+    past_string_stuct=f"""
+    {content['question']}
+    """
 
+    return str(past_string_stuct)
 
 def content_retriver():
     final_string=""
@@ -66,6 +71,7 @@ def content_retriver():
         final_string += temp
 
     return final_string
+
 
 
 def json_uploader(question, answer):

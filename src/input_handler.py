@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form, Request 
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from embedding_and_llm import rag_pipeline,rag_initial_loader
@@ -81,8 +82,10 @@ async def handle_input(
         result.append(text)
 
     final_combine_text='\n\n'.join(result)
-    llm_response=rag_pipeline(final_combine_text)
-    return {'response': llm_response}
+    return StreamingResponse(
+        rag_pipeline(final_combine_text),
+        media_type="text/plain"
+    )
 
 if __name__=='__main__':
     print("server started")

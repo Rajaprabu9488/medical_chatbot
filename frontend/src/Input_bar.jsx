@@ -160,7 +160,7 @@ useEffect(() => {
 
   // send to backend server
 
-  function Api_calls(){
+  async function Api_calls(){
     const formData = new FormData();
     if(words) formData.append("text", words);
     if(audioBlob) formData.append("audio", audioBlob,`${crypto.randomUUID()}.webm`);
@@ -169,21 +169,38 @@ useEffect(() => {
       const newFileName = `${crypto.randomUUID()}.${extension}`;
       formData.append("image", imageFile,newFileName);
     } 
-    let responses=fetch("http://127.0.0.1:3000/input/", {
+    Setwords('');
+    setAudioBlob(null);
+    setimageFile(null);
+    setImageview(null);
+    setAudioview(null);
+    const response = await fetch("http://127.0.0.1:3000/input/", {
     method: "POST",
     body: formData
-  }).then(responded => responded.json())
-  .then(data => {console.log(data);Setquery(prev => {
-  const updated = [...prev];
-  updated[updated.length - 1].text = data.response;
-  return updated;
-});
-});
-  Setwords('');
-  setAudioBlob(null);
-  setimageFile(null);
-  setImageview(null);
-  setAudioview(null);
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    let fullText = "";
+
+    while (true) {
+
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+
+      fullText += chunk;
+
+      Setquery(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1].text = fullText;
+        return updated;
+      });
+}
+  
 }
  const textareaRef = useRef(null);
 

@@ -64,24 +64,30 @@ def rag_pipeline(question):
 
     # rag prompt that pass the string as parameter to llama model
     rag_prompt = f"""
-    You are a medical assistant chatbot designed to provide general health information in a clear, calm, and responsible manner.
+    You are a medical assistant chatbot that provides general health guidance.
 
     Behavior rules:
-    - Show empathy when user mentions illness.
-    - Ask follow-up questions after answered the user question.
-    - If sufficient symptoms are known, provide general guidance and recommendations.
-    - Do NOT diagnose specific diseases.
-    - Provide general treatment guidance when relevant medical context is available.
-    - Do NOT refuse unnecessarily if question is medical-related.
+    - Respond calmly and professionally.
+    - Show brief empathy when the user mentions illness.
+    - First answer the user's concern with general medical guidance.
+    - If enough symptom information is available, give possible explanations and safe advice.
+    - Ask at most 1–2 follow-up questions only if important information is missing.
+    - Never repeat questions that are already answered in the conversation history.
+    - Do NOT diagnose diseases.
+    - Provide safe suggestions such as rest, hydration, or when to seek medical help.
 
     Knowledge usage rules:
-    - Use BOTH conversation history and medical knowledge context to understand the user's condition.
-    - Medical knowledge context is the primary source for treatment guidance.
-    - Conversation history contains important symptom information and MUST be used when relevant.
-    - If medical knowledge context is empty or insufficient, provide safe general guidance instead of refusing.
+    - Use both conversation history and medical knowledge context.
+    - Conversation history may already contain symptom details.
+    - Avoid asking about symptoms that are already mentioned.
+    - If medical context is limited, give safe general advice instead of refusing.
 
-    Avoid excessive empathy repetition.
-    Keep tone professional, calm, and helpful.
+    Response structure:
+    1. Brief acknowledgement or empathy.
+    2. General explanation or guidance.
+    3. One or two follow-up questions if necessary.
+
+    Keep the response concise and helpful.
     
     ---------------------
     Conversation History:
@@ -101,12 +107,12 @@ def rag_pipeline(question):
     
     # LLM query response generating
 
-    response = llm.invoke(rag_prompt)
+    complete_response=""
+    for chunk in llm.stream(rag_prompt):
+        complete_response +=chunk
+        yield chunk
 
-    json_uploader(question, response)
-
-    return response
-
+    json_uploader(question, complete_response)
 
 
 
