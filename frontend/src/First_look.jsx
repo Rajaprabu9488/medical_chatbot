@@ -12,10 +12,10 @@ function First_look(){
     return (
         <>
         <div className='first_view'>
-        { !hasstarted && <><h1>MEDY-GPT</h1>
+        { !hasstarted && <><div style={{height:'130px'}}></div><div className="title_name"><h1 className="first_title_word">MEDY</h1><h1 className="second_title_word">- GPT</h1></div>
         <h1>how can i help you?</h1></>}
         {hasstarted && <div className="second_view">
-            <h2>MEDY-GPT</h2>
+            <div className="title_name"><h2 className="first_title_word">MEDY</h2><h2 className="second_title_word">- GPT</h2></div>
             <div className="chat_view">
             <ul>
                 {query.map((msg)=>( <li

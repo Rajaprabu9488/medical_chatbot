@@ -1,0 +1,160 @@
+
+/* login_signup_bar.jsx */
+.profile{
+    position: absolute;
+    display: flex;
+    margin: 30px 30px 0px 30px;
+    font-size: 24px;
+    height: 40px;
+    width: 40px;
+    border: 2px solid white;
+    border-radius: 50px;
+    justify-content: center;
+    align-items: center;
+    left:92%;
+}
+
+.profile_list{
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid white;
+    width: 150px;
+    height: auto;
+    left: 85%;
+    top: 80px;
+}
+
+.profile_ul{
+    list-style-type: none;
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+}
+
+.profile_list li{
+    display: flex;
+    font-size: 12px;
+    padding: 5px;
+}
+
+.profile_list li:hover{
+    background-color: gray;
+}
+
+.profile_ul b{
+    font-size: 18px;
+    margin: 0px;
+}
+
+.profile_button{
+    background-color: transparent;
+    border: none;
+    margin: 0px auto;
+}
+.login_container{
+
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    display: flex;
+    gap:20px;
+    font-size: 18px;
+
+    z-index: 999;
+}
+
+.login_list{
+    color:white;
+    text-decoration: none;
+}
+
+.login_list:hover{
+    color: lightgreen;
+    text-shadow: 0px 0px 25px lightgreen,0px 0px 50px lightgreen,0px 0px 75px lightgreen,0px 0px 100px lightgreen;
+}
+
+/* login.jsx */
+
+.login_box{
+    position: absolute;
+    left: 30%;
+    top: 10%;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    border: 2px solid white;
+    border-radius: 50px;
+    background-color: rgb(29, 31, 33);
+    width: 500px;
+    height: 80%;
+    padding-left: 120px;
+    justify-content: center;
+    z-index: 1;
+}
+.top_board{
+    display: flex;
+    text-align: justify;
+    color: lightgreen;
+    font-size: 24px;
+    text-shadow: 0px 0px 3px lightgreen;
+}
+
+label{
+
+    
+    font-size: 20px;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    text-align: left;
+}
+
+.userdetails{
+    height: 0px;
+    width: 70%;
+    border: none;
+    border-radius: 50px;
+    background-color: transparent;
+    border-bottom: 2px solid white ;
+    padding: 0px 20px ;
+    
+    
+}
+
+.userdetails:focus{
+    border: none;
+    outline: none;
+    border-bottom: 2px solid red;
+    box-shadow: 0 4px 8px -4px red;
+    height: 40px;
+}
+
+.userdetails:hover{
+    height: 40px;
+}
+
+.login_submittion{
+    height: 40px;
+    width: 400px;
+    background-color: white;
+    color: black;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.login_submittion:hover{
+    color: lightgreen;
+    background-color: white;
+    box-shadow: 0px 0px 15px lightgreen,0px 0px 30px lightgreen,0px 0px 45px lightgreen;
+
+}
+
+.forget_password_label{
+    display: flex;
+}
+
+.remember_checkbox{
+    display: flex;
+
+}
+

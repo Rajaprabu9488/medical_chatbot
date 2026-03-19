@@ -1,10 +1,10 @@
-from fastapi import FastAPI, UploadFile, File, Form, Request 
+from fastapi import FastAPI, UploadFile, File, Form, Request , HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from embedding_and_llm import rag_pipeline,rag_initial_loader
 from audio_to_text import audio_initial_loader,audio_transcription
-from helper import initial_loader, user_id_provider,update_session
+from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user
 import warnings
 from typing import Optional
 import shutil
@@ -27,15 +27,16 @@ app.add_middleware(CORSMiddleware,allow_origins=["*"],
 async def startup_event():
     rag_initial_loader()
     audio_initial_loader()
+    await initial_loader()
     os.makedirs("./temp/audio", exist_ok=True)
     os.makedirs("./temp/image", exist_ok=True)
 
 
+
 @app.get("/api/session-start")
 async def session_start():
-    await initial_loader()
     print('new connection')
-    session_id=user_id_provider()
+    session_id=chat_id_provider()
     update_session(session_id)
     return {"connection": session_id }
 
@@ -50,14 +51,53 @@ async def close_session(request:Request):
 
 
 
+@app.post("/auth/signup/")
+async def signup(username:Optional[str] = Form(None),
+        email:Optional[str] = Form(None),
+        password: Optional[str] = Form(None)                 
+):
+    try:
+        user_id = upadate_user(username,email,password)
+    except Exception as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    
+    return {'identity': user_id ,"username": username ,"usermail": email}
+
+
+
+@app.post("/auth/login/")
+async def signup(username:Optional[str] = Form(None),
+        password: Optional[str] = Form(None)                 
+):
+    try:
+        user_id = validate_user(username,password)
+        return {'identity': user_id[0] ,"username": username,'usermail':user_id[1] }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
+
 @app.post("/input/")
 async def handle_input(
+    session_id:Optional[str]=Form(None),
     text:Optional[str]=Form(None),
     audio: Optional[UploadFile] = File(None),
     image: Optional[UploadFile] = File(None)
 ):
-
+    if(not search_session_id(session_id)):
+        print(search_session_id(session_id))
+        raise HTTPException(status_code=404,detail='session is invalid')
+    
     result=[]
+
+    if image is not None:
+        image_path=f'./temp/image/{image.filename}'
+
+        with open(image_path,'wb') as temp:
+            shutil.copyfileobj(image.file, temp)
+
+        image_text=audio_transcription(image_path)
+        result.append(image_text)
 
     if audio is not None:
 
@@ -69,21 +109,12 @@ async def handle_input(
         audio_text=audio_transcription(audio_path)
         result.append(audio_text)
 
-    if image is not None:
-        image_path=f'./temp/image/{image.filename}'
-
-        with open(image_path,'wb') as temp:
-            shutil.copyfileobj(image.file, temp)
-
-        image_text=audio_transcription(image_path)
-        result.append(image_text)
-
     if text:
         result.append(text)
 
     final_combine_text='\n\n'.join(result)
     return StreamingResponse(
-        rag_pipeline(final_combine_text),
+        rag_pipeline(session_id,final_combine_text),
         media_type="text/plain"
     )
 

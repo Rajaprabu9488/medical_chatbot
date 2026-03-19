@@ -23,27 +23,14 @@ function Input_bar(){
     const fileInputRef = useRef(null);
 
 
-  // Detect reload
-useEffect(() => {
-  const navEntries = performance.getEntriesByType("navigation");
-  const navType = navEntries.length > 0 ? navEntries[0].type : null;
-
-  if (navType === "reload") {
-    sessionStorage.setItem("sessionStarted", "false");
-    console.log("hi reload..");
-  }
-}, []);
-
 
 // SESSION START
 useEffect(() => {
   const sessionExists = sessionStorage.getItem("sessionStarted");
-
   if (sessionExists !== "true") {
     fetch("http://127.0.0.1:3000/api/session-start")
       .then(res => res.json())
       .then(data => {
-        console.log("session created:", data.connection);
         sessionStorage.setItem("session_id", data.connection);
         sessionStorage.setItem("sessionStarted", "true");
       });
@@ -110,6 +97,11 @@ useEffect(() => {
 
   // when user type text or click send button
   const word_change=()=>{
+    const sessionExists = sessionStorage.getItem("sessionStarted");
+    if (sessionExists !== "true"){
+      seterrormsg('invalid session: please reload the page to get token');
+      return;
+    }
     Setwords(words.trim());
     if(!words && !audioBlob && !imageFile) return ;
 
@@ -153,7 +145,6 @@ useEffect(() => {
     
 
     Api_calls();
-    Sethasstarted(true);
     setaudiosize(null);
     setimagesize(null);
   }
@@ -162,6 +153,8 @@ useEffect(() => {
 
   async function Api_calls(){
     const formData = new FormData();
+    const sessionExists = sessionStorage.getItem("sessionStarted");
+    if (sessionExists === "true") formData.append("session_id",sessionStorage.getItem("session_id")) 
     if(words) formData.append("text", words);
     if(audioBlob) formData.append("audio", audioBlob,`${crypto.randomUUID()}.webm`);
     if(imageFile){
@@ -178,7 +171,12 @@ useEffect(() => {
     method: "POST",
     body: formData
     });
-
+    if(!response.ok){
+      const error_data= await response.json();
+      seterrormsg(`${response.statusText}:${error_data.detail}`);
+      return;
+    }
+    Sethasstarted(true);
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 

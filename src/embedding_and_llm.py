@@ -2,7 +2,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.llms import Ollama
 import joblib
 
-from helper import content_retriver,json_uploader
+from helper import content_retriver,Redis_uploader
 
 
 faiss_db_1 = None
@@ -39,7 +39,7 @@ def rag_initial_loader():
     )
 
 
-def rag_pipeline(question):
+def rag_pipeline(session_id,question):
     
     # perform similarity search with k = 3 sentences
     # the search is based ok cosine similarity
@@ -60,8 +60,8 @@ def rag_pipeline(question):
     context ="\n\n".join([i[0].page_content for i in results]) 
 
     # short term memory retriver
-    convo_history = content_retriver()
-
+    convo_history = content_retriver(session_id)
+    
     # rag prompt that pass the string as parameter to llama model
     rag_prompt = f"""
     You are a medical assistant chatbot that provides general health guidance.
@@ -71,19 +71,19 @@ def rag_pipeline(question):
     - Show brief empathy when the user mentions illness.
     - First answer the user's concern with general medical guidance.
     - If enough symptom information is available, give possible explanations and safe advice.
-    - Ask at most 1–2 follow-up questions only if important information is missing.
     - Never repeat questions that are already answered in the conversation history.
     - Do NOT diagnose diseases.
-    - Provide safe suggestions such as rest, hydration, or when to seek medical help.
+    - Provide safe suggestions when to seek medical help.
+
 
     Knowledge usage rules:
     - Use both conversation history and medical knowledge context.
-    - Conversation history may already contain symptom details.
+    - Conversation history contains important symptom information and MUST be used when relevant.
     - Avoid asking about symptoms that are already mentioned.
     - If medical context is limited, give safe general advice instead of refusing.
 
     Response structure:
-    1. Brief acknowledgement or empathy.
+    1. Brief acknowledgement or empathy If the user describes their own symptoms, illness, or discomfort.
     2. General explanation or guidance.
     3. One or two follow-up questions if necessary.
 
@@ -112,10 +112,10 @@ def rag_pipeline(question):
         complete_response +=chunk
         yield chunk
 
-    json_uploader(question, complete_response)
+    Redis_uploader(session_id,question, complete_response)
 
 
-
+    # - Provide safe suggestions such as rest, hydration, or when to seek medical help.
 #  Your tone should be professional, reassuring, and easy to understand for non-medical users.
 
 

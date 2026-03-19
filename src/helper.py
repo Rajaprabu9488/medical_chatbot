@@ -1,30 +1,58 @@
 import json
-import uuid
+import uuid 
 import asyncio
 from datetime import timedelta
 from datetime import datetime
+import redis
+import bcrypt
+import subprocess
+import mysql.connector as sql
 
-queue:list = []
-cache:list = []
+redis_object = None
+mydb = None
+cursor = None
 sessions:dict = {}
 
-async def initial_loader():
+PEPPER = 'Funny-Magnet-GPT'
 
-    global queue, cache
+async def initial_loader():
+    global redis_object, mydb, cursor
+
+    redis_object = redis.Redis(
+    host='localhost',
+    port=6379,
+    decode_responses=True
+    )
 
     try:
-        with open('./src/cache_.json','r') as file:
-            cache = json.load(file)
-        queue = cache[-5:]
-
+        redis_object.ping()
+        print("already running")
     except:
-        print("error in file load")
+        subprocess.run([r"C:\Users\My-PC\OneDrive\Desktop\medical-chatbot\src\start_redis.bat"],shell=True)
+
+    try:
+        mydb = sql.connect(
+            host='localhost',
+            user='root',
+            password='Raja@2005',
+            database='project'
+        )
+
+        cursor = mydb.cursor()
+    except Exception as e:
+        print('database is not connected....')
     
     await start_cleanup()
 
+# ---------------------------------------------------------------------
+#                         session controller
+# --------------------------------------------------------------------
 
 def user_id_provider():
-    return uuid.uuid4()
+    return str(uuid.uuid4())
+
+def chat_id_provider():
+    return str(uuid.uuid4())
 
 async def cleanup_sessions():
     while True:
@@ -32,7 +60,7 @@ async def cleanup_sessions():
 
         for session_id in list(sessions.keys()):
             if now - sessions[session_id] > timedelta(minutes=10):
-                clear_cache()
+                clear_cache(session_id)
                 del sessions[session_id]
 
         await asyncio.sleep(300)
@@ -45,6 +73,102 @@ def update_session(session_id):
     sessions[session_id] = datetime.now()
     print(sessions)
 
+def search_session_id(session_id:str):
+    if(session_id is None):
+        return False
+    session_id = session_id
+    return session_id in sessions
+
+# ---------------------------------------------------------------------
+#                 database usage
+# --------------------------------------------------------------------
+def hash_password(password: str):
+
+    password_peppered = (password + PEPPER).encode()
+
+    salt = bcrypt.gensalt()
+
+    hashed = bcrypt.hashpw(password_peppered, salt)
+
+    return hashed
+
+def verify_password(password: str, stored_hash: bytes):
+    password_peppered = (password + PEPPER).encode()
+    if isinstance(stored_hash, str):
+        stored_hash = stored_hash.encode('utf-8')
+    return bcrypt.checkpw(password_peppered, stored_hash)
+
+
+def Redis_uploader(session_id,question, answer):
+
+    history=redis_object.get(session_id)
+
+    if history:
+        history = json.loads(history)
+    else:
+        history = []
+
+    new_data={'question' : question, 'answer': answer}
+
+    history.append(new_data)
+    history = history[-5:]
+
+    redis_object.set(session_id,json.dumps(history))
+
+
+ 
+def clear_cache(session_id):
+    redis_object.delete(session_id)
+    
+
+def upadate_user(username:str , email:str , password:str):
+    user_id = user_id_provider()
+    username = username.lower()
+    email = email.lower()
+    password = hash_password(password)
+
+    cursor.execute('SELECT user_id FROM user_log WHERE name=%s AND Email=%s LIMIT 1',(username,email))
+    result = cursor.fetchone()
+    if result:
+        raise Exception('User Already Exists')
+    
+    try:
+        cursor.execute("INSERT INTO user_log VALUES(%s , %s , %s ,%s)",(user_id,username,email,password))
+    
+    except Exception as e:
+        expstr = str(e)
+        if('user_log.PRIMARY' in expstr):
+            raise Exception('Issue In ID Generation : Submit Again')
+
+        if('user_log.name' in expstr):
+            raise Exception('Username Already Exists')
+
+        if('user_log.Email' in expstr):
+            raise Exception('E-mail ID Already Exists')
+
+    mydb.commit()
+
+    return user_id
+
+def validate_user(username:str, password:str):
+    username = username.lower()
+    cursor.execute('SELECT user_id,Email,password FROM user_log WHERE name=%s LIMIT 1',([username]))
+    result = cursor.fetchone()
+    if result is None:
+        raise Exception('User Not Exists, Please sign in')
+    
+    if(verify_password(password, result[2])):
+        return result[:-1]
+    else:
+        raise Exception('Invalid Password')
+
+
+
+# --------------------------------------------------------------------
+#                 query usage
+# --------------------------------------------------------------------
+
+
 def past_string_structure(content):
 
     past_string_stuct=f"""
@@ -56,16 +180,14 @@ def past_string_structure(content):
 
     return str(past_string_stuct)
 
-def past_question(content):
-    past_string_stuct=f"""
-    {content['question']}
-    """
 
-    return str(past_string_stuct)
-
-def content_retriver():
+def content_retriver(session_id):
     final_string=""
-
+    queue = redis_object.get(session_id)
+    if queue:
+        queue = json.loads(queue)
+    else:
+        queue = []
     for quest in queue:
         temp = past_string_structure(quest)
         final_string += temp
@@ -74,26 +196,18 @@ def content_retriver():
 
 
 
-def json_uploader(question, answer):
-    global queue, cache
-    
-    new_data={'question' : question, 'answer': answer}
-
-    cache.append(new_data)
-
-    queue = cache[-5:]
-
-    with open('./src/cache_.json','w') as file:
-        json.dump(cache, file, indent=4)
-
- 
-def clear_cache():
-    with open('./src/cache_.json','w') as file:
-        json.dump([], file, indent=4)
-
 
 if __name__=='__main__':
 
-    initial_loader()
+    asyncio.run(initial_loader())
+    demo_id=chat_id_provider()
+    user_demo_id=upadate_user('RAJAPRABHU','raja@123','2345')
+    print(content_retriver(demo_id))
+    print("user id:",user_demo_id)
+    print("chat id:",demo_id)
+    sessions[demo_id]=datetime.now()
+    print(search_session_id(user_demo_id))
+    print(sessions)
 
-    print(content_retriver())
+    # print(validate_user('rajaprabhu','94889'))
+

@@ -45,7 +45,7 @@ const Statuspopup = ({ triggerMicCheck , errormsg, seterrormsg}) => {
   useEffect(() => {
     if (!popup || popup.sticky) return;
 
-    const t = setTimeout(() => setPopup(null), 1000);
+    const t = setTimeout(() => setPopup(null), 2000);
     return () => clearTimeout(t);
   }, [popup]);
 
