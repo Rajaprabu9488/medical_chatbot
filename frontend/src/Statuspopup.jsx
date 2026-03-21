@@ -2,16 +2,18 @@ import { useEffect, useState } from "react";
 import { useSystemStatus } from "./useSystemStatus";
 import "./Statuspopup.css";
 
-const Statuspopup = ({ triggerMicCheck , errormsg, seterrormsg}) => {
+const Statuspopup = ({ shownetworkstatus=false, triggerMicCheck , errormsg, seterrormsg}) => {
   const { network, mic, checkMic } = useSystemStatus();
   const [popup, setPopup] = useState(null);
 
   // 🌐 Network logic
   useEffect(() => {
-    if (!network) {
-      setPopup({ msg: "❌ No internet connection", type: "offline", sticky: true });
-    } else {
-      setPopup({ msg: "✅ Internet connected", type: "online", sticky: false });
+    if(shownetworkstatus){
+      if (!network) {
+        setPopup({ msg: "❌ No internet connection", type: "offline", sticky: true });
+      } else {
+        setPopup({ msg: "✅ Internet connected", type: "online", sticky: false });
+      }
     }
   }, [network]);
 

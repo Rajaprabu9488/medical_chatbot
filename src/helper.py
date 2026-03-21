@@ -1,11 +1,14 @@
 import json
+import os
 import uuid 
-import asyncio
+import random
+import secrets
 from datetime import timedelta
 from datetime import datetime
 import redis
 import bcrypt
 import subprocess
+from dotenv import load_dotenv
 import mysql.connector as sql
 
 redis_object = None
@@ -13,9 +16,11 @@ mydb = None
 cursor = None
 sessions:dict = {}
 
-PEPPER = 'Funny-Magnet-GPT'
+load_dotenv()
 
-async def initial_loader():
+PEPPER = os.getenv("PEPPER_TEXT")
+
+def initial_loader():
     global redis_object, mydb, cursor
 
     redis_object = redis.Redis(
@@ -42,7 +47,7 @@ async def initial_loader():
     except Exception as e:
         print('database is not connected....')
     
-    await start_cleanup()
+    # await start_cleanup()
 
 # ---------------------------------------------------------------------
 #                         session controller
@@ -54,30 +59,41 @@ def user_id_provider():
 def chat_id_provider():
     return str(uuid.uuid4())
 
-async def cleanup_sessions():
-    while True:
-        now = datetime.now()
+# async def cleanup_sessions():
+#     while True:
+#         now = datetime.now()
 
-        for session_id in list(sessions.keys()):
-            if now - sessions[session_id] > timedelta(minutes=10):
-                clear_cache(session_id)
-                del sessions[session_id]
+#         for session_id in list(sessions.keys()):
+#             if now - sessions[session_id] > timedelta(minutes=10):
+#                 clear_cache(session_id)
+#                 del sessions[session_id]
 
-        await asyncio.sleep(300)
+#         await asyncio.sleep(300)
 
 
-async def start_cleanup():
-    asyncio.create_task(cleanup_sessions())
+# async def start_cleanup():
+#     asyncio.create_task(cleanup_sessions())
 
 def update_session(session_id):
-    sessions[session_id] = datetime.now()
-    print(sessions)
+    session_cache=redis_object.get(session_id)
+    if(session_cache is not None):
+        redis_object.expire(session_id,600)
+    else:
+        redis_object.setex(session_id,600,'active')
+
 
 def search_session_id(session_id:str):
     if(session_id is None):
         return False
-    session_id = session_id
-    return session_id in sessions
+    
+    active_session = redis_object.get(session_id)
+    if(active_session == 'active'):
+        redis_object.expire(session_id,600)
+        return True
+    return False
+
+def generate_OTP():
+    return ''.join(random.choices('0123456789',k=6))
 
 # ---------------------------------------------------------------------
 #                 database usage
@@ -98,10 +114,13 @@ def verify_password(password: str, stored_hash: bytes):
         stored_hash = stored_hash.encode('utf-8')
     return bcrypt.checkpw(password_peppered, stored_hash)
 
+def generate_reset_secret():
+    return secrets.token_urlsafe(32)
+
 
 def Redis_uploader(session_id,question, answer):
 
-    history=redis_object.get(session_id)
+    history=redis_object.get(f'chat:{session_id}')
 
     if history:
         history = json.loads(history)
@@ -113,7 +132,7 @@ def Redis_uploader(session_id,question, answer):
     history.append(new_data)
     history = history[-5:]
 
-    redis_object.set(session_id,json.dumps(history))
+    redis_object.set(f'chat:{session_id}',json.dumps(history))
 
 
  
@@ -123,6 +142,7 @@ def clear_cache(session_id):
 
 def upadate_user(username:str , email:str , password:str):
     user_id = user_id_provider()
+    chat_session_id = chat_id_provider()
     username = username.lower()
     email = email.lower()
     password = hash_password(password)
@@ -148,17 +168,33 @@ def upadate_user(username:str , email:str , password:str):
 
     mydb.commit()
 
-    return user_id
+    return [user_id,chat_session_id]
+
+def find_Email(username:str):
+    cursor.execute('SELECT Email FROM user_log WHERE name=%s LIMIT 1',([username]))
+    result = cursor.fetchone()
+    if(result is None):
+        raise Exception("User Not Found")
+    
+    reset_key= generate_reset_secret()
+    otp = generate_OTP()
+
+    store_otp_key={'reset_key':reset_key,'otp':otp}
+    redis_object.setex(result[0],600,json.dumps(store_otp_key))
+
+    return [result[0],reset_key]
+
 
 def validate_user(username:str, password:str):
     username = username.lower()
+    chat_session_id = chat_id_provider()
     cursor.execute('SELECT user_id,Email,password FROM user_log WHERE name=%s LIMIT 1',([username]))
     result = cursor.fetchone()
     if result is None:
         raise Exception('User Not Exists, Please sign in')
     
     if(verify_password(password, result[2])):
-        return result[:-1]
+        return [*result[:-1],chat_session_id]
     else:
         raise Exception('Invalid Password')
 
@@ -180,10 +216,24 @@ def past_string_structure(content):
 
     return str(past_string_stuct)
 
+def question_retriver(session_id, question):
+    question_string=""
+    queue = redis_object.get(f'chat:{session_id}')
+    if queue:
+        queue = json.loads(queue)
+    else:
+        queue = []
+    for quest in queue:
+        question_string += quest['question']
+        question_string += ", "
+
+    question_string +=question
+
+    return question_string
 
 def content_retriver(session_id):
     final_string=""
-    queue = redis_object.get(session_id)
+    queue = redis_object.get(f'chat:{session_id}')
     if queue:
         queue = json.loads(queue)
     else:
@@ -199,15 +249,29 @@ def content_retriver(session_id):
 
 if __name__=='__main__':
 
-    asyncio.run(initial_loader())
+    initial_loader()
     demo_id=chat_id_provider()
-    user_demo_id=upadate_user('RAJAPRABHU','raja@123','2345')
-    print(content_retriver(demo_id))
-    print("user id:",user_demo_id)
-    print("chat id:",demo_id)
-    sessions[demo_id]=datetime.now()
-    print(search_session_id(user_demo_id))
-    print(sessions)
+    ss_demo_id=chat_id_provider()
+    # user_demo_id=upadate_user('RAJAPRABHU','raja@123','2345')
+    # print(content_retriver(demo_id))
+    # print("user id:",user_demo_id)
+    # print("chat id:",demo_id)
+    # sessions[demo_id]=datetime.now()
+    # update_session(demo_id)
+    # print(search_session_id(demo_id))
+    # print(redis_object.ttl(demo_id))
+    # print(sessions)
 
     # print(validate_user('rajaprabhu','94889'))
+
+    # email= find_Email('rajaprabhu')
+    # print(email)
+
+    # x=json.loads(redis_object.get(email[0]))
+    # print(f"reset key: {x['reset_key']}, otp : {x['otp']}")
+
+    # print(generate_OTP())
+
+    # scrt=generate_reset_secret()
+    # print(scrt)
 

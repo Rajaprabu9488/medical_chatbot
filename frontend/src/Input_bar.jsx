@@ -41,9 +41,15 @@ useEffect(() => {
 
     // heartbeat method to stay alive
     useEffect(() => {
-  const sessionId = sessionStorage.getItem("session_id");
-
+  
+  
   const sendHeartbeat = () => {
+    const sessionId = sessionStorage.getItem("session_id");
+    if(!sessionId){
+      seterrormsg('Session id is not exists, Please reload the page');
+      clearInterval(interval)
+      return;
+    }
     fetch("http://127.0.0.1:3000/api/session-active", {
       method: "POST",
       headers: {
@@ -53,7 +59,7 @@ useEffect(() => {
     })
     .then(res => res.json())
     .then(data => console.log("heartbeat sent", data))
-    .catch(err => console.error(err));
+    .catch(err => {console.error(err)});
   };
 
   const interval = setInterval(sendHeartbeat, 600000);
@@ -174,6 +180,7 @@ useEffect(() => {
     if(!response.ok){
       const error_data= await response.json();
       seterrormsg(`${response.statusText}:${error_data.detail}`);
+      sessionStorage.setItem("sessionStarted", "false");
       return;
     }
     Sethasstarted(true);
@@ -212,7 +219,7 @@ useEffect(() => {
 
     return (
         <>
-        <Statuspopup errormsg={errormsg} seterrormsg={seterrormsg}/>
+        <Statuspopup shownetworkstatus={true} errormsg={errormsg} seterrormsg={seterrormsg}/>
         <div className={(hasstarted)?'input_section_hasstarted':'input_section'}>
         
 

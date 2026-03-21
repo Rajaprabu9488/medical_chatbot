@@ -15,7 +15,7 @@
 }
 
 .profile_list{
-    position: absolute;
+    position: fixed;
     display: flex;
     flex-direction: column;
     border: 1px solid white;
@@ -23,6 +23,8 @@
     height: auto;
     left: 85%;
     top: 80px;
+
+    z-index: 999;
 }
 
 .profile_ul{
@@ -158,3 +160,81 @@ label{
 
 }
 
+/* forget_password.jsx */
+
+.forget_password_page{
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    border: 2px solid #2E2E3E;
+    border-radius: 50px;
+    height: 400px;
+    width: 80%;
+    margin: 0px auto;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color:#EAEAF0;
+    top: 100px;
+}
+
+.forget_password_image{
+    place-items: center;
+    border-right: 2px solid #EAEAF0;
+    height: 380px;
+    width: 500px;
+}
+
+.forget_password_image img{
+    position: relative;
+    top: 15%;
+}
+
+.forget_password_content{
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    padding: 20px;
+}
+.forget_password_content h2{
+    color: lightgreen;
+    text-shadow: 0px 0px 5px green;
+}
+
+.forget_password_content b{
+    font-size: 18px;
+}
+
+.forget_password_button_ctrl{
+    display: flex;
+    justify-content: space-between;
+    padding: 30px;
+}
+
+.forget_password_btn{
+    background-color: #394eed;
+    height: 30px;
+    width: 80px;
+    border-radius: 50px;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(0, 102, 255, 0.5);
+}
+
+.forget_password_btn:hover{
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
+.otp_enter{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.otp_enter input{
+    padding: 5px;
+    height: 20px;
+    width: fit-content;
+}

@@ -8,7 +8,6 @@ function Login_signup_bar(){
     const [usrmail, Setusrmail] = useState('');
     const [showpop, Setshowpop] = useState(false);
 
-    const color = 
     useEffect(()=>{
         const from_local=localStorage.getItem('user_id');
         const from_session = sessionStorage.getItem('user_id');

@@ -12,23 +12,23 @@ mydb = sql.connect(
 
 
 
-# r = redis.Redis(
-#     host='localhost',
-#     port=6379,
-#     decode_responses=True
-# )
-# try:
-#     r.ping()
-#     print("already running")
-# except:
-#     subprocess.run([r"C:\Users\My-PC\OneDrive\Desktop\medical-chatbot\src\start_redis.bat"],shell=True)
+r = redis.Redis(
+    host='localhost',
+    port=6379,
+    decode_responses=True
+)
+try:
+    r.ping()
+    print("already running")
+except:
+    subprocess.run([r"C:\Users\My-PC\OneDrive\Desktop\medical-chatbot\src\start_redis.bat"],shell=True)
 
 
 
-# r.set('hello','raja')
+r.set('hello','raja')
 
-# print(r.get('hello'))
-# print(r.get('hell'))
+print(r.get('hello'))
+print(r.get('hell'))
 
 cursor = mydb.cursor()
 

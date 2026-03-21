@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from embedding_and_llm import rag_pipeline,rag_initial_loader
 from audio_to_text import audio_initial_loader,audio_transcription
-from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user
+from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email
 import warnings
 from typing import Optional
 import shutil
@@ -27,7 +27,7 @@ app.add_middleware(CORSMiddleware,allow_origins=["*"],
 async def startup_event():
     rag_initial_loader()
     audio_initial_loader()
-    await initial_loader()
+    initial_loader()
     os.makedirs("./temp/audio", exist_ok=True)
     os.makedirs("./temp/image", exist_ok=True)
 
@@ -44,6 +44,8 @@ async def session_start():
 @app.post("/api/session-active")
 async def close_session(request:Request):
     data = await request.json()
+    if data["session_id"] is None:
+        raise HTTPException(status_code=401,detail="refresh page to get token")
     session_id = data["session_id"]
     print(session_id)
     update_session(session_id)
@@ -61,7 +63,8 @@ async def signup(username:Optional[str] = Form(None),
     except Exception as e:
         raise HTTPException(status_code=409, detail=str(e))
     
-    return {'identity': user_id ,"username": username ,"usermail": email}
+    update_session(user_id[1])
+    return {'identity': user_id[0],"session":user_id[1],"username": username ,"usermail": email}
 
 
 
@@ -71,11 +74,19 @@ async def signup(username:Optional[str] = Form(None),
 ):
     try:
         user_id = validate_user(username,password)
-        return {'identity': user_id[0] ,"username": username,'usermail':user_id[1] }
+        update_session(user_id[2])
+        return {'identity': user_id[0],"session":user_id[2] ,"username": username,'usermail':user_id[1] }
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
-
+@app.post('/auth/get_usermail/')
+async def get_usermail(username:Optional[str]=Form(None)):
+    try:
+        usrmail = find_Email(username)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    
+    return {"usrmail":usrmail[0], "reset_key":usrmail[1]}
 
 @app.post("/input/")
 async def handle_input(
@@ -86,7 +97,7 @@ async def handle_input(
 ):
     if(not search_session_id(session_id)):
         print(search_session_id(session_id))
-        raise HTTPException(status_code=404,detail='session is invalid')
+        raise HTTPException(status_code=404,detail='session is invalid, please reload the page')
     
     result=[]
 

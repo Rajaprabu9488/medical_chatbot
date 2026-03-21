@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import './Login.css'
 import Statuspopup from './Statuspopup';
@@ -11,7 +10,6 @@ function Signup(){
     const [confpassword, Setconfpassword] = useState('');
     const [check,Setcheck] = useState(true);
     const [error,Seterror] = useState('');
-    const navigate = useNavigate();
 
     function validate_input(){
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -63,9 +61,10 @@ function Signup(){
             sessionStorage.setItem('username',data.username);
             sessionStorage.setItem('usermail',data.usermail);
         }
+        sessionStorage.setItem("session_id", data.session);
+        sessionStorage.setItem("sessionStarted", "true");
         
-        navigate("/");
-
+        location.href='/'
     }
         return (
             <>
