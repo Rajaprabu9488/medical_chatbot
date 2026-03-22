@@ -6,6 +6,38 @@ from spacy.util import filter_spans
 import re
 import pandas as pd
 
+def clean_medicine_name(text):
+    text = text.lower()
+
+    # Step 1: Remove dosage (e.g., 300mg, 5 ml)
+    text = re.sub(r'\b\d+\s?(mg|ml|g|mcg|iu)\b', '', text)
+
+    # Step 2: Define medicine forms
+    forms = [
+        "tablet", "tablets", "capsule", "capsules",
+        "syrup", "injection", "cream", "ointment",
+        "gel", "drops","drop",'lotion','suspension',"cap","tab"
+    ]
+
+    # Step 3: Find position of medicine type
+    pattern = r'\b(' + '|'.join(forms) + r')\b'
+    match = re.search(pattern, text)
+
+    if match:
+        # Keep only text BEFORE medicine type
+        text = text[:match.start()]
+
+    release_terms = ["sr", "er", "cr", "xr", "mr", "dr", "ec"]
+    words = text.split()
+    words = [w for w in words if w not in release_terms]
+
+    text = " ".join(words)
+
+    # 5. Final cleanup
+    text = re.sub(r'\s+', ' ', text).strip()
+
+    return text
+
 # load matcher 
 
 nlp=spacy.load('en_core_web_md')
@@ -43,22 +75,28 @@ matcher_0.add("DRUGS", patterns)
 
 df_medicine_list= df['name'].dropna().unique().tolist()
 
-raw_medicine_list= [ i.split() for i in df_medicine_list ]
+processed_medicine=list()
+for medicine in df_medicine_list:
+    only_medicine_name = clean_medicine_name(medicine)
+    processed_medicine.append(only_medicine_name) 
+    
+processed_medicine=list(filter(lambda x:len(x)>3,processed_medicine))
 
-medicine_list= list(set(map(lambda x : ' '.join(x[:2]),raw_medicine_list)))
-
-patterns = [nlp.make_doc(med) for med in medicine_list]
+patterns = [nlp.make_doc(med) for med in processed_medicine]
 
 matcher_1.add("MEDICINE", patterns)
 
 # dosage pattern 
 
-pattern = [
+pattern_separate = [
     {"LIKE_NUM": True},
     {"LOWER": {"IN": ["mg", "ml","g","mcg"]}}
 ]
+pattern_combined = [
+    {"TEXT": {"REGEX": r"(?i)^\d+(\.\d+)?\s?(mg|ml|g|mcg)$"}}
+]
 
-matcher_2.add("DOSAGE", [pattern])
+matcher_2.add("DOSAGE", [pattern_separate, pattern_combined])
 
 # disease pattern 
 

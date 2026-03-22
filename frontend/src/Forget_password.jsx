@@ -23,10 +23,11 @@ function Forget_password(){
         const form = new FormData();
 
         if(usermail) form.append('mail',usermail);
+        if(resetKey) form.append('reset_key',resetKey);
         if(OTP) form.append('OTP',OTP);
         
 
-        const response = await fetch('',{
+        const response = await fetch('http://127.0.0.1:3000/auth/OTP_verification/',{
             method:'POST',
             body:form
         })

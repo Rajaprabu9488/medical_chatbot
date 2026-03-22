@@ -171,18 +171,51 @@ def upadate_user(username:str , email:str , password:str):
     return [user_id,chat_session_id]
 
 def find_Email(username:str):
-    cursor.execute('SELECT Email FROM user_log WHERE name=%s LIMIT 1',([username]))
+    cursor.execute('SELECT Email FROM user_log WHERE name=%s LIMIT 1',(username,))
     result = cursor.fetchone()
     if(result is None):
         raise Exception("User Not Found")
     
+    email=result[0]
+    isactive = redis_object.get(email)
+    if isactive:
+        raise Exception("OTP already sended")
+    
+    if isactive == "inactive":
+        raise Exception("Too much attempts: Try after an hour")
+    
     reset_key= generate_reset_secret()
     otp = generate_OTP()
 
-    store_otp_key={'reset_key':reset_key,'otp':otp}
-    redis_object.setex(result[0],600,json.dumps(store_otp_key))
+    store_otp_key={'reset_key':reset_key,'otp':otp, "attempts":0}
+    redis_object.setex(email,300,json.dumps(store_otp_key))
 
     return [result[0],reset_key]
+
+def verify_OTP(usrmail,reset_key, OTP):
+    otp_data = redis_object.get(usrmail)
+    if otp_data is None:
+        raise Exception("Request Timeout: Try Again")
+    
+    otp_data = json.loads(otp_data)
+
+    otp_data['attempts'] = otp_data.get('attempts', 0) + 1
+
+    if otp_data['attempts'] > 3:
+        redis_object.delete(usrmail)
+        redis_object.setex(usrmail, 3600, "inactive")
+        raise Exception("Too many attempts: Try after an hour")
+
+    if(otp_data['reset_key'] != reset_key):
+        redis_object.setex(usrmail, 300, json.dumps(otp_data))
+        raise Exception('Invalid Request: reload and Try Again')
+    
+    if OTP == otp_data['otp']: 
+        redis_object.delete(usrmail)
+        return [otp_data['reset_key'],'success']
+        
+    redis_object.setex(usrmail, 300, json.dumps(otp_data))
+    raise Exception('Invalid OTP : Try Again')
 
 
 def validate_user(username:str, password:str):
@@ -250,8 +283,8 @@ def content_retriver(session_id):
 if __name__=='__main__':
 
     initial_loader()
-    demo_id=chat_id_provider()
-    ss_demo_id=chat_id_provider()
+    # demo_id=chat_id_provider()
+    # ss_demo_id=chat_id_provider()
     # user_demo_id=upadate_user('RAJAPRABHU','raja@123','2345')
     # print(content_retriver(demo_id))
     # print("user id:",user_demo_id)
@@ -265,7 +298,10 @@ if __name__=='__main__':
     # print(validate_user('rajaprabhu','94889'))
 
     # email= find_Email('rajaprabhu')
+    # mext= email
     # print(email)
+
+    print(verify_OTP('rajaprabhu484@gmail.com','ac','1234'))
 
     # x=json.loads(redis_object.get(email[0]))
     # print(f"reset key: {x['reset_key']}, otp : {x['otp']}")

@@ -12,4 +12,4 @@ saved_files/
 temp/
 
 models/train_image/
-models/demo_nlp_text.txt
+models/extracted_text/

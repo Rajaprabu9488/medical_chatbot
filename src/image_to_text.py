@@ -28,6 +28,10 @@ def ocr_initial_loader():
 
     detect_intent_loader()
 
+# ---------------------------------------------------------------------
+#                     OCR pipeline
+# ---------------------------------------------------------------------
+
 
 
 def ocr_pipeline(image_path):
@@ -36,7 +40,7 @@ def ocr_pipeline(image_path):
     response = OCR_client.models.generate_content(
         model="gemini-2.5-flash",
         contents=[
-            "Extract all text from this image",
+            "Extract all text from this image and in text have decimal values like .5 change it 0.5",
             image
         ]
     )
@@ -56,34 +60,68 @@ def NLP_processing(image_text):
     doc=nlp(filter_result)
 
     for i, ent in enumerate(doc.ents):
-        medicine_name=None
-        dosage=None
-        if ent.label_ == "MEDICINE" or ent.label_ == "DRUG":
-            if i + 1 < len(doc.ents):
-                medicine_name=ent.text
-                next_ent = doc.ents[i + 1]
-                if next_ent.label_ == "DOSAGE":
-                    dosage = next_ent.text
-        if(medicine_name is not None and dosage is None):
-            medicine_and_dosage.append(f'{medicine_name}')
-        elif(medicine_name is not None or dosage is not None):
-            medicine_and_dosage.append(f'{medicine_name} - {dosage}')
 
-    return "\n".join(medicine_and_dosage)
+        # Case 1: MEDICINE detected
+        if ent.label_ in ["MEDICINE", "DRUG"]:
 
-def detect_entity_and_intent(text):
+            if i + 1 < len(doc.ents) and doc.ents[i + 1].label_ == "DOSAGE":
+                medicine_and_dosage.append(f"{ent.text} -> {doc.ents[i + 1].text}")
+            else:
+                medicine_and_dosage.append(ent.text)
+
+        # Case 2: DOSAGE detected but no medicine entity
+        elif ent.label_ == "DOSAGE":
+
+            medicine = None
+
+
+            if i - 1 >= 0 and doc.ents[i - 1].label_ in ["MEDICINE", "DRUG"]:
+                continue  
+
+
+            if ent.start > 0:
+                prev_token = doc[ent.start - 1]
+
+
+                if prev_token.is_alpha:
+                    medicine = prev_token.text
+
+            if medicine:
+                medicine_and_dosage.append(f"{medicine} -> {ent.text}")
+
+    extracted_text=", ".join(medicine_and_dosage)
+
+    return image_prompt_template(extracted_text)
+
+def image_prompt_template(extracted_text):
+    return str(f"""
+        Medicines: {extracted_text}
+
+        Explain:
+            - What each medicine is used for
+            - Typical dosage (if available)
+
+        Be accurate and do not guess.
+    """)
+
+# -------------------------------------------------------------------------------------
+#                         ENTITY AND INTENT
+# -------------------------------------------------------------------------------------
+
+def detect_entity_and_intent(text:str):
     convo_type=[]
     intent = []
+
     dependency = ['it','this','that','they','there','those']
-    
-    if any(word in word.lower() for word in dependency):
+
+    if any(word in text.lower() for word in dependency):
         convo_type.append('dependent convo')
-    
-    doc = nlp(word)
+
+    doc = nlp(text)
     for ent in doc.ents:
         convo_type.append(ent.label_)
 
-    intent.append(detect_intent(word))
+    intent.append(detect_intent(text))
 
     return {'conversation':convo_type,"intent":intent}
 
@@ -147,7 +185,9 @@ def detect_intent_loader():
             "what is acne",
             "explain diabetes",
             "what is the reason for headache",
-            "how fever happens"
+            "how fever happens",
+            "what is paracetomol tablet",
+            "what is glob ointment"
         ],
 
         "non_medical": [
@@ -186,6 +226,10 @@ def detect_intent(text):
 
     return best_intent
 
+# ------------------------------------------------------------------------------------------------------------------------
+#                             USER DETAILS EXTRACTION FOR LONG TERM STORAGE
+# ------------------------------------------------------------------------------------------------------------------------
+
 def content_details(doc):
     trigger_verbs = ["have",'give', 'take', "suffer", "experience", "diagnose", "feel",'be']
 
@@ -220,7 +264,7 @@ def content_details(doc):
             elif word in friend_terms:
                 return "friends"
             elif word in self_terms:
-                return "I"
+                return "self"
     
     def get_severity(text):
         text = text.lower()
@@ -271,15 +315,28 @@ def content_details(doc):
 if __name__=='__main__':
     ocr_initial_loader()
 
-    # with open('models/demo_nlp_text.txt','r') as file:
-    #     demo_test=file.read()
+    with open('models/extracted_text/sample_2.txt','r') as file:
+        demo_test=file.read()
 
-    # print(NLP_processing(demo_test))
-    query = ["what is this",'i am feeling heavy fever and it is so dizziness to me','it is mild and vommiting sensation','what is medicine for it','what is python',"what is paracetamol"]
-    for word in query:
-        print(detect_entity_and_intent(word))
+    print(NLP_processing(demo_test))
 
-    for word in query:
-        doc=nlp(word)
-        print(doc)
-        print(content_details(doc),end='\n\n')
+    # print(ocr_pipeline('models/train_image/IMG_20260311_164336359_HDR.jpg'))
+
+    # query = [
+    #     "what is this",
+    #     'i am feeling heavy fever and it is so dizziness to me',
+    #     'it is mild and vommiting sensation',
+    #     'what is medicine for it',
+    #     'what is python',
+    #     "what is DOLO 650",
+    #     'i have acne in my chicks',
+    #     "what is acetaminophen"
+    #     ]
+    
+    # for word in query:
+    #     print(detect_entity_and_intent(word))
+
+    # for word in query:
+    #     doc=nlp(word)
+    #     print(doc)
+    #     print(content_details(doc),end='\n\n')
