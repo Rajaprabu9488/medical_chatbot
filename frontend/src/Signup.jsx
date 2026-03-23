@@ -26,6 +26,10 @@ function Signup(){
             Seterror('Invalid E-mail id');
             return;
         }
+        if(password.length >16 || password.length<5){
+            Seterror('Password must be 5 to 16 characters');
+            return;
+        }
         if(password !== confpassword){
             Seterror('Password and Confirm password should be same...');
             return;

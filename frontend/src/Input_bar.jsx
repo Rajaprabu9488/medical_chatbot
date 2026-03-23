@@ -173,6 +173,7 @@ useEffect(() => {
     setimageFile(null);
     setImageview(null);
     setAudioview(null);
+    Sethasstarted(true);
     const response = await fetch("http://127.0.0.1:3000/input/", {
     method: "POST",
     body: formData
@@ -181,9 +182,10 @@ useEffect(() => {
       const error_data= await response.json();
       seterrormsg(`${response.statusText}:${error_data.detail}`);
       sessionStorage.setItem("sessionStarted", "false");
+      location.reload(true);
       return;
     }
-    Sethasstarted(true);
+    
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 

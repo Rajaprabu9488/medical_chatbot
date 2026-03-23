@@ -92,6 +92,9 @@ def search_session_id(session_id:str):
         return True
     return False
 
+def generate_reset_secret():
+    return secrets.token_urlsafe(32)
+
 def generate_OTP():
     return ''.join(random.choices('0123456789',k=6))
 
@@ -114,9 +117,6 @@ def verify_password(password: str, stored_hash: bytes):
         stored_hash = stored_hash.encode('utf-8')
     return bcrypt.checkpw(password_peppered, stored_hash)
 
-def generate_reset_secret():
-    return secrets.token_urlsafe(32)
-
 
 def Redis_uploader(session_id,question, answer):
 
@@ -132,12 +132,13 @@ def Redis_uploader(session_id,question, answer):
     history.append(new_data)
     history = history[-5:]
 
-    redis_object.set(f'chat:{session_id}',json.dumps(history))
+    redis_object.setex(f'chat:{session_id}',600,json.dumps(history))
 
 
  
 def clear_cache(session_id):
     redis_object.delete(session_id)
+    redis_object.delete(f'chat:{session_id}')
     
 
 def upadate_user(username:str , email:str , password:str):
@@ -178,16 +179,28 @@ def find_Email(username:str):
     
     email=result[0]
     isactive = redis_object.get(email)
-    if isactive:
-        raise Exception("OTP already sended")
     
-    if isactive == "inactive":
-        raise Exception("Too much attempts: Try after an hour")
+    if isactive:
+        isactive = json.loads(isactive)
+        if isactive['status'] == "verified":
+            raise Exception("Unable To change The Password Right now, try again later")
+        
+        if isactive['status'] == "inactive":
+            raise Exception("Too many attempts ,Try after an hour")
+        
+        if isactive['status'] == "reset_password":
+            raise Exception("Unable To Change The password frequently")
+
+    
+        raise Exception('Something went wrong, Try after few hours')
+    
+    
     
     reset_key= generate_reset_secret()
     otp = generate_OTP()
+    print(otp)
 
-    store_otp_key={'reset_key':reset_key,'otp':otp, "attempts":0}
+    store_otp_key={'reset_key':reset_key,'otp':otp, "attempts":0, 'status' : None}
     redis_object.setex(email,300,json.dumps(store_otp_key))
 
     return [result[0],reset_key]
@@ -195,33 +208,42 @@ def find_Email(username:str):
 def verify_OTP(usrmail,reset_key, OTP):
     otp_data = redis_object.get(usrmail)
     if otp_data is None:
-        raise Exception("Request Timeout: Try Again")
+        raise Exception("Request Timeout, Try Again")
     
     otp_data = json.loads(otp_data)
+    if otp_data['status'] == "verified":
+        raise Exception("OTP Already Verified")
+    
+    if otp_data['status'] == "inactive":
+        raise Exception("Too many attempts ,Try after an hour")
+    
 
     otp_data['attempts'] = otp_data.get('attempts', 0) + 1
 
     if otp_data['attempts'] > 3:
         redis_object.delete(usrmail)
-        redis_object.setex(usrmail, 3600, "inactive")
-        raise Exception("Too many attempts: Try after an hour")
+        otp_data['status'] = "inactive"
+        redis_object.setex(usrmail, 3600, json.dumps(otp_data))
+        raise Exception("Too many attempts ,Try after an hour")
 
     if(otp_data['reset_key'] != reset_key):
         redis_object.setex(usrmail, 300, json.dumps(otp_data))
-        raise Exception('Invalid Request: reload and Try Again')
+        raise Exception('Invalid Request, reload and Try Again')
     
     if OTP == otp_data['otp']: 
         redis_object.delete(usrmail)
+        otp_data['status'] = "verified"
+        redis_object.setex(usrmail, 300, json.dumps(otp_data))
         return [otp_data['reset_key'],'success']
         
     redis_object.setex(usrmail, 300, json.dumps(otp_data))
-    raise Exception('Invalid OTP : Try Again')
+    raise Exception('Invalid OTP, Try Again')
 
 
 def validate_user(username:str, password:str):
     username = username.lower()
     chat_session_id = chat_id_provider()
-    cursor.execute('SELECT user_id,Email,password FROM user_log WHERE name=%s LIMIT 1',([username]))
+    cursor.execute('SELECT user_id,Email,password FROM user_log WHERE name=%s LIMIT 1',(username,))
     result = cursor.fetchone()
     if result is None:
         raise Exception('User Not Exists, Please sign in')
@@ -230,6 +252,24 @@ def validate_user(username:str, password:str):
         return [*result[:-1],chat_session_id]
     else:
         raise Exception('Invalid Password')
+
+
+def update_password(usrmail:str , resetkey:str, newPassword:str):
+    key_status = redis_object.get(usrmail)
+    key_status = json.loads(key_status)
+
+    if(key_status['reset_key'] !=resetkey):
+        redis_object.setex(usrmail, 300, json.dumps(key_status))
+        raise Exception('Invalid Request, reload and Try Again')
+    
+    if(key_status['status'] == "verified"):
+        key_status['status'] = "reset_password"
+        redis_object.setex(usrmail, 3600, json.dumps(key_status))
+
+    encrypt_password = hash_password(newPassword)
+    cursor.execute("UPDATE user_log SET password=%s WHERE Email=%s",(encrypt_password,usrmail))
+
+    return True
 
 
 
@@ -301,7 +341,7 @@ if __name__=='__main__':
     # mext= email
     # print(email)
 
-    print(verify_OTP('rajaprabhu484@gmail.com','ac','1234'))
+    # print(verify_OTP('rajaprabhu484@gmail.com','ac','1234'))
 
     # x=json.loads(redis_object.get(email[0]))
     # print(f"reset key: {x['reset_key']}, otp : {x['otp']}")
@@ -311,3 +351,4 @@ if __name__=='__main__':
     # scrt=generate_reset_secret()
     # print(scrt)
 
+    redis_object.flushall()

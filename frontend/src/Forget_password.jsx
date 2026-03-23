@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { useLocation,useNavigate } from "react-router-dom";
 import Statuspopup from "./Statuspopup";
 import PageNotFound from "./PageNotFound";
-
+import './Login.css';
+import Page_logo from './assets/otp.gif'
 
 function Forget_password(){
-    const location = useLocation();
+    const temp_location = useLocation();
     const navigate = useNavigate();
 
-    const [usermail,Setusermail] = useState(location.state?.Email || '')
-    const [resetKey,SetresetKey] = useState(location.state?.reset_key || '')
+    const [usermail,Setusermail] = useState(temp_location.state?.Email || '')
+    const [resetKey,SetresetKey] = useState(temp_location.state?.reset_key || '')
     const [OTP,SetOTP] = useState('');
     const [error,Seterror] = useState('');
 
@@ -33,10 +34,23 @@ function Forget_password(){
         })
         
         const result = await response.json();
-        if(!result.ok){
+        if(!response.ok){
             Seterror(`${response.statusText} : ${result.detail}`);
             return;
         }
+
+        if(result['reset_key']===resetKey && result['content']==='success') {
+            navigate('/reset_password',{
+            state: { Email: usermail, reset_key: result['reset_key']}, replace: true 
+        });
+            Setusermail('');
+            SetresetKey('');
+            return;
+        }
+
+        
+
+
     }
 
     
@@ -48,7 +62,7 @@ function Forget_password(){
         {(usermail && resetKey)  && <><Statuspopup errormsg={error} seterrormsg={Seterror} />
         <div className="forget_password_page">
             <div className="forget_password_image">
-                <img height={'250px'} width={'250px'} src="./src/assets/Face_scanning.gif" alt="image"></img>
+                <img height={'300px'} width={'300px'} src={Page_logo} alt="image"></img>
             </div>
             
             <div className="forget_password_content">
@@ -57,12 +71,13 @@ function Forget_password(){
                 <p>your Email : <b>{usermail}</b></p>
                 <div className="otp_enter">
                     <p>OTP : </p><input type="text" value={OTP} onChange={(e)=>SetOTP(e.target.value)}></input>
+                    <button className="forget_password_btn">RESENT</button>
                 </div>
                 
                 <p>Click "SUBMIT" button, To Continue</p>
                 <div className="forget_password_button_ctrl">
                 <button className="forget_password_btn" onClick={()=>{navigate('/login')}}>{'< Back'}</button>
-                <button className="forget_password_btn" >SUBMIT</button>
+                <button className="forget_password_btn" onClick={send_otp} >SUBMIT</button>
                 </div>
                 
             </div>

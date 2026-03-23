@@ -5,7 +5,7 @@ import uvicorn
 from embedding_and_llm import rag_pipeline,rag_initial_loader
 from audio_to_text import audio_initial_loader,audio_transcription
 from image_to_text import ocr_initial_loader, ocr_pipeline
-from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email,verify_OTP
+from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email,verify_OTP ,update_password
 import warnings
 from typing import Optional
 import shutil
@@ -28,7 +28,7 @@ app.add_middleware(CORSMiddleware,allow_origins=["*"],
 async def startup_event():
     rag_initial_loader()
     audio_initial_loader()
-    ocr_pipeline()
+    ocr_initial_loader()
     initial_loader()
     os.makedirs("./temp/audio", exist_ok=True)
     os.makedirs("./temp/image", exist_ok=True)
@@ -86,6 +86,8 @@ async def get_usermail(username:Optional[str]=Form(None)):
     try:
         usrmail = find_Email(username)
     except Exception as e:
+        if("Too many attempts" in str(e)):
+            raise HTTPException(status_code=429, detail=str(e))
         raise HTTPException(status_code=404, detail=str(e))
     
     return {"usrmail":usrmail[0], "reset_key":usrmail[1]}
@@ -96,9 +98,23 @@ async def otp_verification(mail:Optional[str]=Form(None),reset_key:Optional[str]
     try:
         success_data = verify_OTP(mail,reset_key,OTP)
     except Exception as e:
+        if("Too many attempts" in str(e)):
+            raise HTTPException(status_code=429, detail=str(e))
+
         raise HTTPException(status_code=401, detail=str(e))
     
     return {'reset_key':success_data[0],"content":success_data[1]}
+
+
+@app.post('/auth/reset_password/')
+async def reset_password(usrmail:Optional[str]=Form(None), reset_key:Optional[str]=Form(None), new_password:Optional[str]=Form(None)):
+    try:
+        status = update_password(usrmail, reset_key,new_password)
+
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    
+    return {'reset_status': status} 
 
 
 @app.post("/input/")

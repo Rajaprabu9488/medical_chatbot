@@ -214,7 +214,7 @@ label{
 .forget_password_btn{
     background-color: #394eed;
     height: 30px;
-    width: 80px;
+    width: auto;
     border-radius: 50px;
     border: none;
     font-size: 16px;
@@ -237,4 +237,57 @@ label{
     padding: 5px;
     height: 20px;
     width: fit-content;
+}
+
+/* reset_password.jsx */
+.password_enter{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0px;
+}
+
+.inline_input_span{
+    display: flex;
+    flex-direction: row;
+    gap:5px;
+    align-items: center;
+}
+
+.inline_input_span input{
+    height: 20px;
+    width: auto;
+    padding: 0px 5px 0px 5px;
+    margin-left: 10px;
+}
+
+.inline_input_span p{
+    width: 150px;
+}
+
+.reset_password_button_ctrl{
+    display: flex;
+    justify-content: end;
+    padding: 30px;
+    width: 100%;
+}
+
+/* update sucess */
+
+.update_success{
+    position: relative;
+    margin: 0px auto;
+    top:30px;
+
+}
+
+.update_password_btn{
+    background-color: #394eed;
+    height: 30px;
+    width: 80px;
+    border-radius: 50px;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(0, 102, 255, 0.5);
 }
