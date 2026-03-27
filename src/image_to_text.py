@@ -100,6 +100,8 @@ def image_prompt_template(extracted_text):
         Explain:
             - What each medicine is used for
             - Typical dosage (if available)
+            - Brief description of the medicine
+            - Common side effects
 
         Be accurate and do not guess.
     """)
@@ -123,7 +125,7 @@ def detect_entity_and_intent(text:str):
 
     intent.append(detect_intent(text))
 
-    return {'conversation':convo_type,"intent":intent}
+    return {"question":text,'conversation':convo_type,"intent":intent}
 
 
 def detect_intent_loader():
@@ -177,17 +179,10 @@ def detect_intent_loader():
         ],
 
         "general_query": [
-            "what is fever",
-            "what is migraine",
-            "define headache",
-            "what causes fever",
-            "why do we get cold",
-            "what is acne",
-            "explain diabetes",
-            "what is the reason for headache",
-            "how fever happens",
-            "what is paracetomol tablet",
-            "what is glob ointment"
+            "tell me something",
+            "give information",
+            "explain this",
+            "what is this"
         ],
 
         "non_medical": [
@@ -203,7 +198,51 @@ def detect_intent_loader():
             "what is java",
             "best gaming laptop",
             "weather today"
-        ]
+        ],
+
+        "drug_info": [
+        "what is acetaminophen",
+        "what is paracetamol",
+        "what is ibuprofen tablet",
+        "uses of dolo 650",
+        "what is amoxicillin",
+        "what does this medicine do",
+        "what is this drug",
+        "medicine information",
+        "about crocin tablet"
+    ],
+
+    "side_effects": [
+        "side effects of paracetamol",
+        "what are the side effects of ibuprofen",
+        "does dolo cause drowsiness",
+        "is there any side effect",
+        "what happens if I take this medicine",
+        "can this tablet cause vomiting",
+        "is it safe or not",
+        "adverse effects of this drug"
+    ],
+
+    "dosage_info": [
+        "what is the dosage of paracetamol",
+        "how many tablets can I take",
+        "how often should I take this medicine",
+        "maximum dose of dolo 650",
+        "can I take twice a day",
+        "dosage for fever",
+        "how much should I take"
+    ],
+
+    "disease_info": [
+        "what is fever",
+        "what is migraine",
+        "what is acne",
+        "define diabetes",
+        "what causes headache",
+        "why do we get cold",
+        "how fever happens",
+        "reason for stomach pain"
+    ]
     }
 
     # Precompute
@@ -311,32 +350,64 @@ def content_details(doc):
 
     return detail_extract
 
+def continuous_question(question ,past_query=None):
+    current_concat = []
+    current_ques = detect_entity_and_intent(question)
 
+    current_concat.append(question)
+
+    if current_ques['conversation'] !=[] and any('dependent convo' in convo for convo in current_ques['conversation']) and 'non_medical' not in current_ques['intent']:
+        for past_intent in past_query[::-1]:
+            if any('dependent convo' in convo for convo in past_intent['conversation']) or (current_ques['conversation'] == []):
+                if (past_intent['intent'][0] not in ['symptom_description','general_query',"dosage_info",'drug_info',"disease_info"]):
+                    current_concat.append(past_intent["question"])
+                    continue
+                else:
+                    current_concat.append(past_intent["question"])
+                    break
+
+            else:
+                current_concat.append(past_intent["question"])
+                break
+
+    
+    concat_question=" ,".join(current_concat[::-1])
+
+    return {'question':concat_question,"conversation":current_ques['conversation'], "intent":current_ques['intent']} 
+
+
+    
 if __name__=='__main__':
     ocr_initial_loader()
 
-    with open('models/extracted_text/sample_2.txt','r') as file:
-        demo_test=file.read()
+    # with open('models/extracted_text/sample_2.txt','r') as file:
+    #     demo_test=file.read()
 
-    print(NLP_processing(demo_test))
+    # print(NLP_processing(demo_test))
 
     # print(ocr_pipeline('models/train_image/IMG_20260311_164336359_HDR.jpg'))
 
-    # query = [
-    #     "what is this",
-    #     'i am feeling heavy fever and it is so dizziness to me',
-    #     'it is mild and vommiting sensation',
-    #     'what is medicine for it',
-    #     'what is python',
-    #     "what is DOLO 650",
-    #     'i have acne in my chicks',
-    #     "what is acetaminophen"
-    #     ]
+    query = [
+        "what is this",
+        'i am feeling heavy fever and it is so dizziness to me',
+        'it is mild and vommiting sensation',
+        'what is medicine for it',
+        'what is python',
+        "what is DOLO 650",
+        'i have acne in my chicks',
+        "what is acetaminophen",
+        "i have heart attack past 2 years"
+        ]
     
+    
+    # query_entity = []
     # for word in query:
-    #     print(detect_entity_and_intent(word))
+    #     entity = detect_entity_and_intent(word)
+    #     query_entity.append(entity)
 
-    # for word in query:
-    #     doc=nlp(word)
-    #     print(doc)
-    #     print(content_details(doc),end='\n\n')
+    # print(continuous_question("this medicine is using only for body pain",query_entity))
+
+    for word in query:
+        doc=nlp(word)
+        print(doc)
+        print(content_details(doc),end='\n\n')

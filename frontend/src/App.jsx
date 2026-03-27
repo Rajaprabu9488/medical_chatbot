@@ -9,6 +9,7 @@ import Login_signup_bar from "./Login_signup_bar";
 import Forget_password from "./Forget_password";
 import Reset_password from "./Reset_password";
 import PageNotFound from "./PageNotFound";
+import EditProfile from "./EditProfile";
 
 
 export const responseStatus = createContext();
@@ -44,6 +45,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forget_password" element={<Forget_password />} />
         <Route path="/reset_password" element={<Reset_password />} />
+        <Route path="/Edit_profile" element={<EditProfile />} />
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </responseStatus.Provider>

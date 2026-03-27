@@ -1,8 +1,11 @@
 import { useState,useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import './Login.css'
 
 function Login_signup_bar(){
+
+    const navigate = useNavigate()
+
     const [user_id, Setuser_id] = useState('');
     const [usrname, Setusrname] = useState('');
     const [usrmail, Setusrmail] = useState('');
@@ -49,7 +52,7 @@ function Login_signup_bar(){
         sessionStorage.removeItem('username');
         sessionStorage.removeItem('usermail');
         sessionStorage.removeItem("sessionStarted");
-        sessionStorage.removeItem("session_id")
+        sessionStorage.removeItem("session_id");
 
         location.reload(true);
 
@@ -70,7 +73,7 @@ function Login_signup_bar(){
                 {usrmail}
                 </div></li>
                 <hr></hr>
-                <li><button className="profile_button" onClick={()=>alert('edit profile')}>EDIT PROFILE</button></li>
+                <li><button className="profile_button" onClick={()=>navigate('/Edit_profile')}>EDIT PROFILE</button></li>
                 <hr></hr>
                 <li><button className="profile_button" onClick={sign_out}>SIGN OUT</button></li>
             </ul>

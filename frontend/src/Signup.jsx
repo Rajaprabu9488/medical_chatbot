@@ -74,7 +74,7 @@ function Signup(){
             <>
             <Statuspopup errormsg={error} seterrormsg={Seterror}/>
             <div className="login_box">
-                <label className="top_board">SIGN UP</label>
+                <label className="top_board">CREATE THE ACCOUNT</label>
             <label title="USERNAME">USERNAME</label>
             <input className="userdetails" onChange={e => Setusername(e.target.value)} value={username} type="text"></input>
             <label title="E-MAIL">E-MAIL</label>

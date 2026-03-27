@@ -44,8 +44,8 @@ def rag_pipeline(session_id,question):
     past_question=question_retriver(session_id, question)
     # perform similarity search with k = 3 sentences
     # the search is based ok cosine similarity
-    results_1 = faiss_db_1.similarity_search_with_score(past_question, k=3)
-    results_2 = faiss_db_2.similarity_search_with_score(past_question, k=3)
+    results_1 = faiss_db_1.similarity_search_with_score(past_question['question'], k=3)
+    results_2 = faiss_db_2.similarity_search_with_score(past_question['question'], k=3)
 
     
     # score of documents
@@ -83,7 +83,10 @@ def rag_pipeline(session_id,question):
     Response structure: 
         1. Brief acknowledgement or empathy If the user describes their own symptoms, illness, or discomfort. 
         2. General explanation or guidance. 
-        4. Keep response concise and easy to understand
+        3. Keep response concise and easy to understand
+        4. Format the answer in clear bullet points when explaining causes, Treatments, symptoms, or advice.
+        5. Use simple and easy-to-understand language (avoid long paragraphs).
+        6. Use short headings if needed (e.g., "Possible causes:", "What you can do:").
 
     ---------------------
     Conversation History: 
@@ -105,7 +108,7 @@ def rag_pipeline(session_id,question):
         complete_response +=chunk
         yield chunk
 
-    Redis_uploader(session_id,question, complete_response)
+    Redis_uploader(session_id,question, complete_response, past_question['conversation'] ,past_question['intent'])
 
 
     # - Provide safe suggestions such as rest, hydration, or when to seek medical help.

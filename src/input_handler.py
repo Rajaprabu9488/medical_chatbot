@@ -5,7 +5,7 @@ import uvicorn
 from embedding_and_llm import rag_pipeline,rag_initial_loader
 from audio_to_text import audio_initial_loader,audio_transcription
 from image_to_text import ocr_initial_loader, ocr_pipeline
-from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email,verify_OTP ,update_password
+from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email,verify_OTP ,update_password, user_profile,edit_user_profile
 import warnings
 from typing import Optional
 import shutil
@@ -49,9 +49,8 @@ async def close_session(request:Request):
     if data["session_id"] is None:
         raise HTTPException(status_code=401,detail="refresh page to get token")
     session_id = data["session_id"]
-    print(session_id)
     update_session(session_id)
-    return {'connection':'keep-alive'}
+    return {'connection':True}
 
 
 
@@ -116,6 +115,30 @@ async def reset_password(usrmail:Optional[str]=Form(None), reset_key:Optional[st
     
     return {'reset_status': status} 
 
+@app.post('/auth/Edit_profile/')
+async def Edit_profile(user_id:Optional[str]=Form(None)):
+    if user_id is None:
+        raise HTTPException(status_code=401,detail='user_id did not provided')
+    try:
+        
+        user_details = user_profile(user_id)
+        return user_details
+    except Exception as e:
+        raise HTTPException(status_code=404,detail=str(e))
+
+@app.post('/auth/profile_update/')
+async def update_user_profile(userid:Optional[str]=Form(None) , username:Optional[str]=Form(None) , Email:Optional[str]=Form(None) , key:Optional[str]=Form(None)):
+    try:
+        data = edit_user_profile(userid,username,Email,key)
+        return data
+    except Exception as e:
+        if("Too many change" in str(e)):
+            raise HTTPException(status_code=429, detail=str(e))
+        if("unauthorized request" in str(e)):
+            raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=404,detail=str(e))
+    
+     
 
 @app.post("/input/")
 async def handle_input(

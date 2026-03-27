@@ -11,6 +11,8 @@ import subprocess
 from dotenv import load_dotenv
 import mysql.connector as sql
 
+from image_to_text import detect_entity_and_intent, continuous_question,ocr_initial_loader
+
 redis_object = None
 mydb = None
 cursor = None
@@ -59,27 +61,14 @@ def user_id_provider():
 def chat_id_provider():
     return str(uuid.uuid4())
 
-# async def cleanup_sessions():
-#     while True:
-#         now = datetime.now()
 
-#         for session_id in list(sessions.keys()):
-#             if now - sessions[session_id] > timedelta(minutes=10):
-#                 clear_cache(session_id)
-#                 del sessions[session_id]
-
-#         await asyncio.sleep(300)
-
-
-# async def start_cleanup():
-#     asyncio.create_task(cleanup_sessions())
 
 def update_session(session_id):
     session_cache=redis_object.get(session_id)
     if(session_cache is not None):
-        redis_object.expire(session_id,600)
+        redis_object.expire(session_id,650)
     else:
-        redis_object.setex(session_id,600,'active')
+        redis_object.setex(session_id,650,'active')
 
 
 def search_session_id(session_id:str):
@@ -88,7 +77,7 @@ def search_session_id(session_id:str):
     
     active_session = redis_object.get(session_id)
     if(active_session == 'active'):
-        redis_object.expire(session_id,600)
+        redis_object.expire(session_id,650)
         return True
     return False
 
@@ -118,7 +107,7 @@ def verify_password(password: str, stored_hash: bytes):
     return bcrypt.checkpw(password_peppered, stored_hash)
 
 
-def Redis_uploader(session_id,question, answer):
+def Redis_uploader(session_id,question, answer, conversation, entity):
 
     history=redis_object.get(f'chat:{session_id}')
 
@@ -127,7 +116,7 @@ def Redis_uploader(session_id,question, answer):
     else:
         history = []
 
-    new_data={'question' : question, 'answer': answer}
+    new_data={'question' : question, 'answer': answer ,'conversation':conversation,"intent":entity}
 
     history.append(new_data)
     history = history[-5:]
@@ -268,11 +257,64 @@ def update_password(usrmail:str , resetkey:str, newPassword:str):
 
     encrypt_password = hash_password(newPassword)
     cursor.execute("UPDATE user_log SET password=%s WHERE Email=%s",(encrypt_password,usrmail))
-
+    mydb.commit()
     return True
 
+def user_profile(user_id):
+    secret_key = redis_object.get(f'changeprofile:{user_id}')
+    if(secret_key == 'success'):
+        raise Exception('Too many change , try again later')
+    
+    cursor.execute("SELECT name,Email FROM user_log WHERE user_id=%s LIMIT 1",(user_id,))
 
+    result = cursor.fetchone()
 
+    key=generate_reset_secret()
+    
+    redis_object.setex(f'changeprofile:{user_id}',600,key)
+
+    if(result):
+        return {'username':result[0],'usermail':result[1],'key':key}
+    
+    raise Exception('user not founded')
+
+def edit_user_profile(userid,username,Email,key):
+
+    username = username.lower()
+    Email = Email.lower()
+
+    cursor.execute("SELECT name,Email FROM user_log WHERE user_id=%s LIMIT 1",(userid,))
+
+    result = cursor.fetchone()
+
+    if(result is None):
+        raise Exception('user not founded')
+    
+    if(username == result[0]):
+        raise Exception("existing and current username's are same")
+    
+    if(Email == result[1]):
+        raise Exception("existing and current Email's are same")
+    
+    secret_key = redis_object.get(f'changeprofile:{userid}')
+
+    if(secret_key is None):
+        raise Exception('Timeout error , try again')
+    if(secret_key == 'success'):
+        raise Exception('Too many change , try again later')
+    
+    if (secret_key != key):
+        raise Exception("unauthorized request , do again")
+    try:
+        cursor.execute("UPDATE user_log SET name=%s, Email=%s WHERE user_id=%s",(username,Email,userid))
+        mydb.commit()
+    except Exception as e:
+        print(e)
+        raise Exception('values already exists')
+
+    redis_object.setex(f'changeprofile:{userid}',3600,'success')
+    return {'status':True,'key':secret_key}
+    
 # --------------------------------------------------------------------
 #                 query usage
 # --------------------------------------------------------------------
@@ -296,11 +338,8 @@ def question_retriver(session_id, question):
         queue = json.loads(queue)
     else:
         queue = []
-    for quest in queue:
-        question_string += quest['question']
-        question_string += ", "
-
-    question_string +=question
+    
+    question_string = continuous_question(question, queue)
 
     return question_string
 
@@ -323,6 +362,7 @@ def content_retriver(session_id):
 if __name__=='__main__':
 
     initial_loader()
+    ocr_initial_loader()
     # demo_id=chat_id_provider()
     # ss_demo_id=chat_id_provider()
     # user_demo_id=upadate_user('RAJAPRABHU','raja@123','2345')
@@ -351,4 +391,32 @@ if __name__=='__main__':
     # scrt=generate_reset_secret()
     # print(scrt)
 
-    redis_object.flushall()
+    # redis_object.flushall()
+
+    query = [
+        "what is this",
+        'i am feeling heavy fever and it is so dizziness to me',
+        'it is mild and vommiting sensation',
+        'what is medicine for it',
+        'what is python',
+        "what is DOLO 650",
+        'i have acne in my chicks',
+        "what is acetaminophen",
+        "this medicine is using only for body pain"
+        ]
+    
+    for ques in query:
+        print('current question', ques)
+        past_ques = question_retriver('1234',ques)
+
+        past_content = content_retriver('1234')
+        print(past_content)
+
+
+        Redis_uploader('1234',ques,'im answer',past_ques['conversation'],past_ques['intent'] )
+
+        print("retriver question:",past_ques['question'])
+
+        print('---------------------------------------------------------------------------')
+
+        
