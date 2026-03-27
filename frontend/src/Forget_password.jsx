@@ -71,7 +71,6 @@ function Forget_password(){
                 <p>your Email : <b>{usermail}</b></p>
                 <div className="otp_enter">
                     <p>OTP : </p><input type="text" value={OTP} onChange={(e)=>SetOTP(e.target.value)}></input>
-                    <button className="forget_password_btn">RESENT</button>
                 </div>
                 
                 <p>Click "SUBMIT" button, To Continue</p>

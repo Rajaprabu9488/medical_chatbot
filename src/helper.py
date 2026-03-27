@@ -10,6 +10,7 @@ import bcrypt
 import subprocess
 from dotenv import load_dotenv
 import mysql.connector as sql
+from send_email import send_email
 
 from image_to_text import detect_entity_and_intent, continuous_question,ocr_initial_loader
 
@@ -187,7 +188,7 @@ def find_Email(username:str):
     
     reset_key= generate_reset_secret()
     otp = generate_OTP()
-    print(otp)
+    send_email(to_email=email,username=username,otp=otp,expiry=5)
 
     store_otp_key={'reset_key':reset_key,'otp':otp, "attempts":0, 'status' : None}
     redis_object.setex(email,300,json.dumps(store_otp_key))

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            margin: 30px auto;
+            width: 400px;
+            border-radius: 10px;
+        }
+        .otp {
+            font-size: 32px;
+            color: #007BFF;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .footer {
+            font-size: 12px;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Hello {{ username }}</h2>
+        <p>Your OTP is:</p>
+
+        <div class="otp">{{ otp }}</div>
+
+        <img src="cid:banner_image" width="100%" />
+
+        <p>This OTP will expire in {{ expiry }} minutes.</p>
+
+        <div class="footer">
+            Do not share this OTP with anyone.
+        </div>
+    </div>
+</body>
+</html>
