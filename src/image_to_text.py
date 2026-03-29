@@ -291,6 +291,16 @@ def content_details(doc):
         "classmate","neighbor"
     }
 
+    def detect_recovery_advanced(doc):
+        for token in doc:
+            if token.dep_ == "neg":
+                return "inactive"
+
+            if token.lemma_ in ["recover", "heal", "cure"]:
+                return "inactive"
+
+        return "active"
+
 
     def identify_subject(text):
         doc = nlp(text)
@@ -320,6 +330,7 @@ def content_details(doc):
     'condition':[],
     'disease':None,
     'medicine':[],
+    'status':None,
     'duration':None,
     'timestamp':None
     }
@@ -327,6 +338,7 @@ def content_details(doc):
     detail_extract['severity']=get_severity(doc.text)
     
     detail_extract['patient']= identify_subject(doc)
+    detail_extract['status'] = detect_recovery_advanced(doc)
 
     for ent in doc.ents:
         if ent.label_ == "MEDICINE" or ent.label_=="DRUG":
@@ -348,7 +360,13 @@ def content_details(doc):
         except:
             detail_extract['timestamp'] = None
 
-    return detail_extract
+    if (detail_extract['condition'] != [] or detail_extract["disease"] is not None or detail_extract["medicine"] != []):
+        return detail_extract
+
+
+# ------------------------------------------------------------------------------------------------------------------------
+#                                       continuous convo detection
+# ------------------------------------------------------------------------------------------------------------------------
 
 def continuous_question(question ,past_query=None):
     current_concat = []
@@ -396,7 +414,8 @@ if __name__=='__main__':
         "what is DOLO 650",
         'i have acne in my chicks',
         "what is acetaminophen",
-        "i have heart attack past 2 years"
+        "i have heart attack past 2 years",
+        "i completedly cured from headache"
         ]
     
     

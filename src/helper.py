@@ -10,7 +10,7 @@ import bcrypt
 import subprocess
 from dotenv import load_dotenv
 import mysql.connector as sql
-from send_email import send_email
+from send_email import send_email, send_signup_verify
 
 from image_to_text import detect_entity_and_intent, continuous_question,ocr_initial_loader
 
@@ -99,7 +99,7 @@ def hash_password(password: str):
 
     hashed = bcrypt.hashpw(password_peppered, salt)
 
-    return hashed
+    return hashed.decode('utf-8')
 
 def verify_password(password: str, stored_hash: bytes):
     password_peppered = (password + PEPPER).encode()
@@ -133,33 +133,80 @@ def clear_cache(session_id):
 
 def upadate_user(username:str , email:str , password:str):
     user_id = user_id_provider()
-    chat_session_id = chat_id_provider()
     username = username.lower()
-    email = email.lower()
     password = hash_password(password)
 
-    cursor.execute('SELECT user_id FROM user_log WHERE name=%s AND Email=%s LIMIT 1',(username,email))
-    result = cursor.fetchone()
-    if result:
-        raise Exception('User Already Exists')
-    
-    try:
-        cursor.execute("INSERT INTO user_log VALUES(%s , %s , %s ,%s)",(user_id,username,email,password))
-    
-    except Exception as e:
-        expstr = str(e)
-        if('user_log.PRIMARY' in expstr):
+    cursor.execute(
+        'SELECT user_id, name, Email FROM user_log WHERE name=%s OR Email=%s OR user_id=%s',
+        (username, email, user_id)
+    )
+    results = cursor.fetchall()
+
+    for row in results:
+        if row[1] == username:
+            raise Exception('Username Already Exists')
+        if row[2] == email:
+            raise Exception('E-mail ID Already Exists')
+        if row[0] == user_id:
             raise Exception('Issue In ID Generation : Submit Again')
 
-        if('user_log.name' in expstr):
-            raise Exception('Username Already Exists')
+    usr_detail={'id':user_id,'username':username,'email':email,'password':password}
 
-        if('user_log.Email' in expstr):
-            raise Exception('E-mail ID Already Exists')
+    redis_object.setex(f"user_detail:{user_id}",600,json.dumps(usr_detail))
 
-    mydb.commit()
+        
+    otp = generate_OTP()
+    store_otp={'userid':user_id,'otp':otp, "attempts":0}
+    redis_object.setex(f"signup{user_id}",600,json.dumps(store_otp))
 
-    return [user_id,chat_session_id]
+    send_signup_verify(email,username,otp,5)
+
+    return user_id
+
+def signup_verified(user_id,OTP):
+    chat_session_id = chat_id_provider()
+    otp_data = redis_object.get(f"signup{user_id}")
+    if otp_data is None:
+        raise Exception("Request Timeout , Try Again")
+    
+    otp_data = json.loads(otp_data)
+    
+    otp_data['attempts'] = otp_data.get('attempts', 0) + 1
+
+    if otp_data['attempts'] > 3:
+        redis_object.delete(f"signup{user_id}")
+        redis_object.setex(f"signup{user_id}", 3600, json.dumps(otp_data))
+        raise Exception("Too many attempts ,Try after an hour")
+    
+    if OTP == otp_data['otp']: 
+        redis_object.delete(f"signup{user_id}")
+        user_data=redis_object.get(f"user_detail:{user_id}")
+        if(user_data is None):
+            raise Exception('Data not found, try again later')
+            
+        user_data = json.loads(user_data)
+        try:
+            cursor.execute("INSERT INTO user_log VALUES(%s , %s , %s ,%s)",(user_id,user_data['username'],user_data['email'],user_data['password']))
+            mydb.commit()
+        except Exception as e:
+            expstr = str(e)
+            if('user_log.PRIMARY' in expstr):
+                raise Exception('Issue In ID Generation : Submit Again')
+
+            if('user_log.name' in expstr):
+                raise Exception('Username Already Exists')
+
+            if('user_log.Email' in expstr):
+                raise Exception('E-mail ID Already Exists')
+            
+            
+        redis_object.delete(f"user_detail:{user_id}")
+        update_session(chat_session_id)
+        return {'identity': user_id,'username': user_data['username'],"usermail": user_data['email'],"session":chat_session_id}
+        
+    redis_object.setex(f"signup{user_id}", 300, json.dumps(otp_data))
+    raise Exception('Invalid OTP, Try Again')
+    
 
 def find_Email(username:str):
     cursor.execute('SELECT Email FROM user_log WHERE name=%s LIMIT 1',(username,))
@@ -366,7 +413,8 @@ if __name__=='__main__':
     ocr_initial_loader()
     # demo_id=chat_id_provider()
     # ss_demo_id=chat_id_provider()
-    # user_demo_id=upadate_user('RAJAPRABHU','raja@123','2345')
+    # user_demo_id=upadate_user('RAJ','raja@123','2345')
+    # print(user_demo_id)
     # print(content_retriver(demo_id))
     # print("user id:",user_demo_id)
     # print("chat id:",demo_id)

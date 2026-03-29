@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Login.css'
 import Statuspopup from './Statuspopup';
 
@@ -10,6 +11,8 @@ function Signup(){
     const [confpassword, Setconfpassword] = useState('');
     const [check,Setcheck] = useState(true);
     const [error,Seterror] = useState('');
+
+    const navigate = useNavigate();
 
     function validate_input(){
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -55,20 +58,11 @@ function Signup(){
             return;
         }
 
-        if(check){
-            localStorage.setItem('user_id', data.identity);
-            localStorage.setItem('username',data.username);
-            localStorage.setItem('usermail',data.usermail);
-        }
-        else{
-            sessionStorage.setItem('user_id', data.identity);
-            sessionStorage.setItem('username',data.username);
-            sessionStorage.setItem('usermail',data.usermail);
-        }
-        sessionStorage.setItem("session_id", data.session);
-        sessionStorage.setItem("sessionStarted", "true");
         
-        location.href='/'
+        
+        navigate('/signup_verify',{
+            state: { id: data.identity ,email: data.usermail, check_box:check}, replace: true 
+        });
     }
         return (
             <>

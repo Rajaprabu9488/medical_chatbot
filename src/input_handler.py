@@ -5,7 +5,7 @@ import uvicorn
 from embedding_and_llm import rag_pipeline,rag_initial_loader
 from audio_to_text import audio_initial_loader,audio_transcription
 from image_to_text import ocr_initial_loader, ocr_pipeline
-from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email,verify_OTP ,update_password, user_profile,edit_user_profile
+from helper import initial_loader,update_session,chat_id_provider, search_session_id,upadate_user,validate_user , find_Email,verify_OTP ,update_password, user_profile,edit_user_profile,signup_verified
 import warnings
 from typing import Optional
 import shutil
@@ -64,8 +64,22 @@ async def signup(username:Optional[str] = Form(None),
     except Exception as e:
         raise HTTPException(status_code=409, detail=str(e))
     
-    update_session(user_id[1])
-    return {'identity': user_id[0],"session":user_id[1],"username": username ,"usermail": email}
+    return {'identity': user_id,"usermail": email}
+
+@app.post("/auth/signup_verification/")
+async def signup_verification(userid:Optional[str]=Form(None),mail:Optional[str]=Form(None),OTP:Optional[str]=Form(None)):
+    try:
+        result = signup_verified(userid,OTP)
+        return result
+    except Exception as e:
+        if("Request Timeout" in str(e)):
+            raise HTTPException(status_code=401,detail=str(e))
+        if("Too many attempts" in str(e)):
+            raise HTTPException(status_code=429, detail=str(e))
+        
+        raise HTTPException(status_code=404,detail=str(e))
+
+
 
 
 

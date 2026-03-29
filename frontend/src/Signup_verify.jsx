@@ -1,19 +1,18 @@
-import { useEffect, useState } from "react";
-import { useLocation,useNavigate } from "react-router-dom";
-import Statuspopup from "./Statuspopup";
-import PageNotFound from "./PageNotFound";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import './Login.css';
 import Page_logo from './assets/otp.gif'
+import Statuspopup from "./Statuspopup";
+import PageNotFound from "./PageNotFound";
 
-function Forget_password(){
+function Signup_verify(){
     const temp_location = useLocation();
-    const navigate = useNavigate();
 
-    const [usermail,Setusermail] = useState(temp_location.state?.Email || '')
-    const [resetKey,SetresetKey] = useState(temp_location.state?.reset_key || '')
+    const [userid,Setuserid] = useState(temp_location.state?.id || '')
+    const [check,Setcheck] = useState(temp_location.state?.check_box || '')
+    const [usermail,Setusermail] = useState(temp_location.state?.email || '')
     const [OTP,SetOTP] = useState('');
     const [error,Seterror] = useState('');
-
 
     async function send_otp(){
         if(OTP.length != 6){
@@ -22,47 +21,50 @@ function Forget_password(){
         }
 
         const form = new FormData();
-
-        if(usermail) form.append('mail',usermail);
-        if(resetKey) form.append('reset_key',resetKey);
+        if(userid) form.append('userid',userid);
+        if(userid) form.append('mail',usermail);
         if(OTP) form.append('OTP',OTP);
         
 
-        const response = await fetch('http://127.0.0.1:3000/auth/OTP_verification/',{
+        const response = await fetch('http://127.0.0.1:3000/auth/signup_verification/',{
             method:'POST',
             body:form
         })
         
-        const result = await response.json();
+        const data = await response.json();
         if(!response.ok){
-            Seterror(`${response.statusText} : ${result.detail}`);
+            Seterror(`${response.statusText} : ${data.detail}`);
             return;
         }
 
-        if(result['reset_key']===resetKey && result['content']==='success') {
-            navigate('/reset_password',{
-            state: { Email: usermail, reset_key: result['reset_key']}, replace: true 
-        });
-            Setusermail('');
-            SetresetKey('');
-            return;
+        if(check){
+            localStorage.setItem('user_id', data.identity);
+            localStorage.setItem('username',data.username);
+            localStorage.setItem('usermail',data.usermail);
         }
+        else{
+            sessionStorage.setItem('user_id', data.identity);
+            sessionStorage.setItem('username',data.username);
+            sessionStorage.setItem('usermail',data.usermail);
+        }
+        sessionStorage.setItem("session_id", data.session);
+        sessionStorage.setItem("sessionStarted", "true");
+        
+        location.href='/';
     }
-
-    
 
 
     return (
         <>
-        {(!usermail || !resetKey) && <><PageNotFound /></>}
-        {(usermail && resetKey)  && <><Statuspopup errormsg={error} seterrormsg={Seterror} />
+        {(!userid || !usermail) && <><PageNotFound /></>}
+        {(userid && usermail)  && <><Statuspopup errormsg={error} seterrormsg={Seterror} />
         <div className="forget_password_page">
             <div className="forget_password_image">
                 <img height={'300px'} width={'300px'} src={Page_logo} alt="image"></img>
             </div>
             
             <div className="forget_password_content">
-                <h2>OTP VERIFICATION</h2>
+                <h2>SignUP VERIFICATION</h2>
                 <p>Please verify your email address. We have sent a One-Time Password (OTP) to your email. Enter the OTP below to continue.</p>
                 <p>your Email : <b>{usermail}</b></p>
                 <div className="otp_enter">
@@ -71,7 +73,6 @@ function Forget_password(){
                 
                 <p>Click "SUBMIT" button, To Continue</p>
                 <div className="forget_password_button_ctrl">
-                <button className="forget_password_btn" onClick={()=>{navigate('/login')}}>{'< Back'}</button>
                 <button className="forget_password_btn" onClick={send_otp} >SUBMIT</button>
                 </div>
                 
@@ -80,8 +81,9 @@ function Forget_password(){
 
 
             </div></>}
+        
         </>
     )
 }
 
-export default Forget_password;
+export default Signup_verify;
