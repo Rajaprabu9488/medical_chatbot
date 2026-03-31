@@ -3,7 +3,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from jinja2 import Environment, FileSystemLoader
-
+from datetime import datetime
 import os
 from dotenv import load_dotenv
 
@@ -88,6 +88,43 @@ def send_signup_verify(to_email, username, otp, expiry):
     server.send_message(msg)
     server.quit()
 
+def successful_signup(username,to_email):
+    from_email = "gptmedy@gmail.com"
+    app_password = os.getenv("EMAIL_APP_PASSWORD")
+
+    # Setup Jinja2
+    env = Environment(loader=FileSystemLoader('src/templates'))
+    template = env.get_template('signup_sucess_template.html')
+
+    # Render HTML with dynamic data
+    html_content = template.render(
+        username=username,
+        app_name= "MEDY-GPT",
+        year= datetime.now().year
+    )
+
+    # Create email
+    msg = MIMEMultipart('related')
+    msg['Subject'] = "Welcome To Medy-gpt"
+    msg['From'] = from_email
+    msg['To'] = to_email
+
+    # Attach HTML
+    msg.attach(MIMEText(html_content, 'html'))
+
+    # Attach banner image
+    with open("src/banner.png", "rb") as f:
+        img = MIMEImage(f.read())
+        img.add_header('Content-ID', '<banner_image>')
+        msg.attach(img)
+
+    # Send email
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(from_email, app_password)
+    server.send_message(msg)
+    server.quit()
+
 if __name__=="__main__":
     # send_email(
     #     to_email="rajaprabhu484@gmail.com",
@@ -96,9 +133,11 @@ if __name__=="__main__":
     #     expiry=5
     # )
 
-    send_signup_verify(
-        to_email="rajaprabhu484@gmail.com",
-        username="Raja",
-        otp="123456",
-        expiry=5
-    )
+    # send_signup_verify(
+    #     to_email="rajaprabhu484@gmail.com",
+    #     username="Raja",
+    #     otp="123456",
+    #     expiry=5
+    # )
+
+    successful_signup('raja',"rajaprabhu484@gmail.com")

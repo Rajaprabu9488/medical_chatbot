@@ -5,7 +5,6 @@ from dotenv import  load_dotenv
 import os
 import spacy
 import re
-import dateparser
 import joblib
 
 import custom_medical_component
@@ -269,11 +268,12 @@ def detect_intent(text):
 #                             USER DETAILS EXTRACTION FOR LONG TERM STORAGE
 # ------------------------------------------------------------------------------------------------------------------------
 
-def content_details(doc):
+def content_details(sentence):
+    doc=nlp(sentence)
     trigger_verbs = ["have",'give', 'take', "suffer", "experience", "diagnose", "feel",'be']
 
     severity_map = {
-    "severe": ["severe", "extreme", "intense", "unbearable", "very bad","very severe","critical","acute","serious"],
+    "severe": ["severe", "extreme", "intense", "unbearable", "very bad","very severe","critical","acute","serious","heavy"],
     "moderate": ["moderate", "average", "normal pain","chronic"],
     "mild": ["mild", "slight", "little", "light"]
     }
@@ -313,7 +313,7 @@ def content_details(doc):
             elif word in friend_terms:
                 return "friends"
             elif word in self_terms:
-                return "self"
+                return "user"
     
     def get_severity(text):
         text = text.lower()
@@ -328,17 +328,15 @@ def content_details(doc):
     detail_extract={'patient': None,
     'severity':None,
     'condition':[],
-    'disease':None,
+    'disease': None,
     'medicine':[],
     'status':None,
-    'duration':None,
-    'timestamp':None
     }
 
     detail_extract['severity']=get_severity(doc.text)
     
     detail_extract['patient']= identify_subject(doc)
-    detail_extract['status'] = detect_recovery_advanced(doc)
+    
 
     for ent in doc.ents:
         if ent.label_ == "MEDICINE" or ent.label_=="DRUG":
@@ -347,20 +345,12 @@ def content_details(doc):
             detail_extract['disease'] = ent.text
         if ent.label_ == "SYMPTOM":
             detail_extract['condition'].append(ent.text)
-        if ent.label_ == "TIME_EXPRESSION" or ent.label_ == 'DATE':
-            detail_extract['duration'] = ent.text
                         
+    if detail_extract['status'] is None:
+        detail_extract['status'] = detect_recovery_advanced(doc)
+    
 
-                    
-    if(detail_extract['duration']):
-        parsed_date = dateparser.parse(detail_extract['duration'])
-        try:
-            formatted_date = parsed_date.strftime("%d/%m/%Y")
-            detail_extract['timestamp']=formatted_date
-        except:
-            detail_extract['timestamp'] = None
-
-    if (detail_extract['condition'] != [] or detail_extract["disease"] is not None or detail_extract["medicine"] != []):
+    if detail_extract['patient'] and detail_extract['condition'] != [] or (detail_extract["disease"] is not None or (detail_extract["disease"] is not None and detail_extract["medicine"] != [])):
         return detail_extract
 
 
@@ -415,7 +405,8 @@ if __name__=='__main__':
         'i have acne in my chicks',
         "what is acetaminophen",
         "i have heart attack past 2 years",
-        "i completedly cured from headache"
+        "i completedly cured from headache",
+        "my sister is innocent"        
         ]
     
     
@@ -427,6 +418,5 @@ if __name__=='__main__':
     # print(continuous_question("this medicine is using only for body pain",query_entity))
 
     for word in query:
-        doc=nlp(word)
-        print(doc)
-        print(content_details(doc),end='\n\n')
+        print(word)
+        print(content_details(word),end='\n\n')

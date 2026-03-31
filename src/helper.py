@@ -3,16 +3,16 @@ import os
 import uuid 
 import random
 import secrets
-from datetime import timedelta
-from datetime import datetime
+from itertools import zip_longest
 import redis
 import bcrypt
+import threading
 import subprocess
 from dotenv import load_dotenv
 import mysql.connector as sql
-from send_email import send_email, send_signup_verify
+from send_email import send_email, send_signup_verify, successful_signup
 
-from image_to_text import detect_entity_and_intent, continuous_question,ocr_initial_loader
+from image_to_text import detect_entity_and_intent, continuous_question,ocr_initial_loader,content_details
 
 redis_object = None
 mydb = None
@@ -158,8 +158,16 @@ def upadate_user(username:str , email:str , password:str):
     otp = generate_OTP()
     store_otp={'userid':user_id,'otp':otp, "attempts":0}
     redis_object.setex(f"signup{user_id}",600,json.dumps(store_otp))
-
-    send_signup_verify(email,username,otp,5)
+    threading.Thread(
+    target=send_email,
+    kwargs={
+        "to_email": email,
+        "username": username,
+        "otp": otp,
+        "expiry": 5
+    },
+    daemon=True
+    ).start()
 
     return user_id
 
@@ -202,6 +210,14 @@ def signup_verified(user_id,OTP):
             
         redis_object.delete(f"user_detail:{user_id}")
         update_session(chat_session_id)
+        threading.Thread(
+        target=successful_signup,
+        kwargs={
+            "username": user_data['username'],
+            "to_email": user_data['email']    
+        },
+        daemon=True
+        ).start()
         return {'identity': user_id,'username': user_data['username'],"usermail": user_data['email'],"session":chat_session_id}
         
     redis_object.setex(f"signup{user_id}", 300, json.dumps(otp_data))
@@ -235,7 +251,16 @@ def find_Email(username:str):
     
     reset_key= generate_reset_secret()
     otp = generate_OTP()
-    send_email(to_email=email,username=username,otp=otp,expiry=5)
+    threading.Thread(
+    target=send_email,
+    kwargs={
+        "to_email": email,
+        "username": username,
+        "otp": otp,
+        "expiry": 5
+    },
+    daemon=True
+    ).start()
 
     store_otp_key={'reset_key':reset_key,'otp':otp, "attempts":0, 'status' : None}
     redis_object.setex(email,300,json.dumps(store_otp_key))
@@ -404,6 +429,56 @@ def content_retriver(session_id):
 
     return final_string
 
+def update_patient_condition(user_id,data):
+    data=content_details(data)
+    if data is None:
+        return None
+    
+    disease = data['disease'] or 'unknown'
+    symptoms = json.dumps(data['condition'] or [])
+    medicine = json.dumps(data['medicine'] or [])
+    status = data['status']
+    patient = data['patient']
+    severity =data['severity'] or 'mild'
+    
+    cursor.execute('SELECT user_id,symptoms,disease FROM user_condition WHERE (user_id=%s AND patient=%s) AND disease=%s',(user_id, patient, disease))
+    result = cursor.fetchone()
+    if result:
+        cursor.execute("""
+            UPDATE user_condition 
+            SET symptoms=%s, medicine=%s, status=%s, severity=%s
+            WHERE user_id=%s AND patient=%s AND disease=%s
+        """, (symptoms, medicine, status, severity,user_id, patient, disease))
+
+    else:
+        cursor.execute("""
+            INSERT INTO user_condition 
+            (user_id, severity, patient, symptoms, disease, medicine, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, data['severity'], patient, symptoms, disease, medicine, status))
+
+    mydb.commit()
+
+        
+
+def user_details_template(user_id):
+    cursor.execute('SELECT patient,severity,symptoms,disease,medicine,status FROM user_condition WHERE user_id=%s',(user_id,))
+    mydb_result = cursor.fetchall()
+
+    result=[]
+    for db_result in mydb_result:
+        data=f"""
+        patient:{db_result[0]},
+        severity:{db_result[1]},
+        symptoms:{db_result[2]},
+        disease:{db_result[3]},
+        medicine:{db_result[4]}
+        current status:{db_result[5]}
+        """
+
+        result.append(data)
+    
+    return "\n".join(result)
 
 
 
@@ -442,6 +517,45 @@ if __name__=='__main__':
 
     # redis_object.flushall()
 
+    # query = [
+    #     "what is this",
+    #     'i am feeling heavy fever and it is so dizziness to me',
+    #     'it is mild and vommiting sensation',
+    #     'what is medicine for it',
+    #     'what is python',
+    #     "what is DOLO 650",
+    #     'i have acne in my chicks',
+    #     "what is acetaminophen",
+    #     "this medicine is using only for body pain"
+    #     ]
+    
+    # for ques in query:
+    #     print('current question', ques)
+    #     past_ques = question_retriver('1234',ques)
+
+    #     past_content = content_retriver('1234')
+    #     print(past_content)
+
+
+    #     Redis_uploader('1234',ques,'im answer',past_ques['conversation'],past_ques['intent'] )
+
+    #     print("retriver question:",past_ques['question'])
+
+    #     print('---------------------------------------------------------------------------')
+
+
+    # data=[
+    
+    # {'patient': 'user', 'severity': 'severe', 'condition': ['fever', 'dizziness'], 'disease': ['fever'], 'medicine': [], 'status': 'active', 'duration': None, 'timestamp': None},
+
+    # {'patient': 'user', 'severity': None, 'condition': [], 'disease': ['acne'], 'medicine': [], 'status': 'active', 'duration': None, 'timestamp': None},
+
+    # {'patient': 'user', 'severity': None, 'condition': [], 'disease': ['heart attack'], 'medicine': [], 'status': 'active', 'duration': '2 years', 'timestamp': '31/03/2024'},
+
+
+    # {'patient': 'user', 'severity': None, 'condition': ['fever'], 'disease': [], 'medicine': ['cured'], 'status': 'inactive', 'duration': None, 'timestamp': None},
+    # {'patient': 'user', 'severity': None, 'condition': ['fever'], 'disease': ['acne'], 'medicine': [], 'status': 'inactive', 'duration': None, 'timestamp': None},
+    # ]
     query = [
         "what is this",
         'i am feeling heavy fever and it is so dizziness to me',
@@ -451,21 +565,12 @@ if __name__=='__main__':
         "what is DOLO 650",
         'i have acne in my chicks',
         "what is acetaminophen",
-        "this medicine is using only for body pain"
+        "i have heart attack past 2 years",
+        "i completedly cured from headache",
+        "my sister is innocent"        
         ]
-    
-    for ques in query:
-        print('current question', ques)
-        past_ques = question_retriver('1234',ques)
+    for da in query:
+        update_patient_condition('0e03bb97-191e-41b5-b1ad-841ef9853a64',da)
 
-        past_content = content_retriver('1234')
-        print(past_content)
-
-
-        Redis_uploader('1234',ques,'im answer',past_ques['conversation'],past_ques['intent'] )
-
-        print("retriver question:",past_ques['question'])
-
-        print('---------------------------------------------------------------------------')
-
+    print(user_details_template('0e03bb97-191e-41b5-b1ad-841ef9853a64'))
         
