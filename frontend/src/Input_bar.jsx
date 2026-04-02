@@ -160,6 +160,8 @@ useEffect(() => {
   async function Api_calls(){
     const formData = new FormData();
     const sessionExists = sessionStorage.getItem("sessionStarted");
+    const user_id = localStorage.getItem('user_id') || sessionStorage.getItem('user_id') || null;
+    if(user_id) formData.append('user_id',user_id)
     if (sessionExists === "true") formData.append("session_id",sessionStorage.getItem("session_id")) 
     if(words) formData.append("text", words);
     if(audioBlob) formData.append("audio", audioBlob,`${crypto.randomUUID()}.webm`);

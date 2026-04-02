@@ -2,7 +2,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.llms import Ollama
 import joblib
 
-from helper import content_retriver,Redis_uploader,question_retriver
+from helper import content_retriver,Redis_uploader,question_retriver,update_patient_condition,user_details_template
 
 
 faiss_db_1 = None
@@ -39,9 +39,10 @@ def rag_initial_loader():
     )
 
 
-def rag_pipeline(session_id,question):
+def rag_pipeline(user_id,session_id,question):
     # past question retriver
     past_question=question_retriver(session_id, question)
+    update_patient_condition(user_id,past_question['question'])
     # perform similarity search with k = 3 sentences
     # the search is based ok cosine similarity
     results_1 = faiss_db_1.similarity_search_with_score(past_question['question'], k=3)
@@ -61,6 +62,8 @@ def rag_pipeline(session_id,question):
     context ="\n\n".join([i[0].page_content for i in results]) 
     # short term memory retriver
     convo_history = content_retriver(session_id)
+
+    user_medical_history = user_details_template(user_id)
     
     # rag prompt that pass the string as parameter to llama model
     rag_prompt = f"""
@@ -88,6 +91,9 @@ def rag_pipeline(session_id,question):
         5. Use simple and easy-to-understand language (avoid long paragraphs).
         6. Use short headings if needed (e.g., "Possible causes:", "What you can do:").
 
+    ---------------------
+    Medical History
+    {user_medical_history}
     ---------------------
     Conversation History: 
     {convo_history} 

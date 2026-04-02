@@ -89,10 +89,10 @@ function Login(){
         <Statuspopup errormsg={error} seterrormsg={Seterror}/>
         <div className="login_box">
             <label className="top_board" >LOGIN IN</label>
-            <label title="USERNAME">USERNAME</label>
-            <input className="userdetails" onChange={e => Setusername(e.target.value)} value={username} type="text"></input>
-            <label title="PASSWORD">PASSWORD</label>
-            <input className="userdetails" onChange={e => Setpassword(e.target.value)} value={password} type="password"></input>
+            <label htmlFor="username" title="USERNAME">USERNAME</label>
+            <input id="username" className="userdetails" onChange={e => Setusername(e.target.value)} value={username} type="text"></input>
+            <label htmlFor="password" title="PASSWORD">PASSWORD</label>
+            <input id="password"  className="userdetails" onChange={e => Setpassword(e.target.value)} value={password} type="password"></input>
             <Link className='forget_password_label' to='/forget_password' onClick={handleClick}>forget password</Link>
             <span className='remember_checkbox'>
                 <input type='checkbox' checked={check} onChange={e => Setcheck(e.target.checked)} /><p>REMEMBER ALWAYS</p>

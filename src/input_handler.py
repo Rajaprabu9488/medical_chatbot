@@ -156,6 +156,7 @@ async def update_user_profile(userid:Optional[str]=Form(None) , username:Optiona
 
 @app.post("/input/")
 async def handle_input(
+    user_id:Optional[str]=Form(None),
     session_id:Optional[str]=Form(None),
     text:Optional[str]=Form(None),
     audio: Optional[UploadFile] = File(None),
@@ -191,7 +192,7 @@ async def handle_input(
 
     final_combine_text='\n\n'.join(result)
     return StreamingResponse(
-        rag_pipeline(session_id,final_combine_text),
+        rag_pipeline(user_id,session_id,final_combine_text),
         media_type="text/plain"
     )
 
