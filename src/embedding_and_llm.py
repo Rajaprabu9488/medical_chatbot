@@ -82,6 +82,7 @@ def rag_pipeline(user_id,session_id,question):
         - Conversation history contains important symptom information and MUST be used when relevant. 
         - Avoid asking about symptoms that are already mentioned. 
         - If medical context is limited, give safe general advice instead of refusing. 
+        - provide summary about medicines, if it exist
 
     Response structure: 
         1. Brief acknowledgement or empathy If the user describes their own symptoms, illness, or discomfort. 
