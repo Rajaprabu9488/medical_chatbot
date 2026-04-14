@@ -173,9 +173,11 @@ async def handle_input(
 
         with open(image_path,'wb') as temp:
             shutil.copyfileobj(image.file, temp)
-
-        image_text=ocr_pipeline(image_path)
-        result.append(image_text)
+        try:
+            image_text=ocr_pipeline(image_path)
+            result.append(image_text)
+        except Exception as e:
+            raise HTTPException(status_code=503,detail='OCR failed to Connect, try again')
 
     if audio is not None:
 
@@ -183,9 +185,11 @@ async def handle_input(
 
         with open(audio_path,'wb') as temp:
             shutil.copyfileobj(audio.file, temp)
-
-        audio_text=audio_transcription(audio_path)
-        result.append(audio_text)
+        try:
+            audio_text=audio_transcription(audio_path)
+            result.append(audio_text)
+        except Exception as e:
+            raise HTTPException(status_code=503,detail='STT failed to Connect, try again')
 
     if text:
         result.append(text)

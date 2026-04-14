@@ -22,6 +22,8 @@ function Input_bar(){
               imageview, setImageview,imageFile,setimageFile} = useContext(responseStatus);
     const fileInputRef = useRef(null);
 
+    const [issendbtn,Setissendbtn] = useState(true);
+
 
 
 // SESSION START
@@ -153,6 +155,7 @@ useEffect(() => {
     Api_calls();
     setaudiosize(null);
     setimagesize(null);
+    Setissendbtn(false);
   }
 
   // send to backend server
@@ -183,8 +186,11 @@ useEffect(() => {
     if(!response.ok){
       const error_data= await response.json();
       seterrormsg(`${response.statusText}:${error_data.detail}`);
-      sessionStorage.setItem("sessionStarted", "false");
-      location.reload(true);
+      if(response.status==404){
+        sessionStorage.setItem("sessionStarted", "false");
+        location.reload(true);
+      }
+      Setissendbtn(true);
       return;
     }
     
@@ -208,8 +214,8 @@ useEffect(() => {
         updated[updated.length - 1].text = fullText;
         return updated;
       });
-}
-  
+  }
+  Setissendbtn(true);
 }
  const textareaRef = useRef(null);
 
@@ -255,7 +261,7 @@ useEffect(() => {
       />):(<Audiouploader src={audioview} removeAudio={removeAudio}/>) }
          <div className='Btn-section-left'>
           <button className='input_button' onClick={start_audiorecord}><img src={mic_idle} height='30px' alt='mic'></img></button>
-      <button className='input_button' onClick={word_change}><img src={send_img} height='30px' alt='send'></img></button>
+      <button className={(issendbtn)?'input_button':'input_button_disable'} onClick={(issendbtn)? word_change : null}><img src={send_img} height='30px' alt='send'></img></button>
       </div>
       </div>
         

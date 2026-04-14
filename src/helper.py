@@ -430,6 +430,8 @@ def content_retriver(session_id):
     return final_string
 
 def update_patient_condition(user_id,data):
+    if user_id is None:
+        return None
     data=content_details(data)
     if data is None:
         return None

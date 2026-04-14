@@ -76,6 +76,7 @@ def rag_pipeline(user_id,session_id,question):
         - If enough symptom information is available, give possible explanations and safe advice. 
         - Never repeat questions that are already answered in the conversation history. 
         - Do NOT diagnose diseases without proper symptoms. 
+        - Only skip clearly non-medical questions. If the query mentions symptoms, body parts, pain, or health concerns, treat it as a medical question.
     
     Knowledge usage rules: 
         - Use both conversation history and medical knowledge context. 
