@@ -88,7 +88,7 @@ function Login(){
         <>
         <Statuspopup errormsg={error} seterrormsg={Seterror}/>
         <div className="login_box">
-            <label className="top_board" >LOGIN IN</label>
+            <label className="top_board" >LOGIN</label>
             <label htmlFor="username" title="USERNAME">USERNAME</label>
             <input id="username" className="userdetails" onChange={e => Setusername(e.target.value)} value={username} type="text"></input>
             <label htmlFor="password" title="PASSWORD">PASSWORD</label>
